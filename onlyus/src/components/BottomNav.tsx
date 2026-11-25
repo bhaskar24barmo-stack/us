@@ -1,0 +1,89 @@
+import { motion } from 'framer-motion';
+import { Camera, Heart, MessageCircleHeart, Phone, User } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAppStore } from '@/stores/useAppStore';
+
+const TABS = [
+  { path: '/chats', label: 'Chats', icon: MessageCircleHeart },
+  { path: '/calls', label: 'Calls', icon: Phone },
+  { path: '/camera', label: 'Camera', icon: Camera, center: true },
+  { path: '/memories', label: 'Our World', icon: Heart },
+  { path: '/profile', label: 'Profile', icon: User },
+];
+
+export default function BottomNav() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const role = useAppStore((s) => s.currentUserRole ?? 'me');
+  const myId = useAppStore((s) => s.profiles[role].id);
+  const unreadChats = useAppStore(
+    (s) => s.messages.filter((m) => m.sender_id !== myId && !m.read_at && !m.deleted_at).length
+  );
+
+  return (
+    <nav
+      aria-label="Main navigation"
+      className="fixed bottom-0 inset-x-0 z-30 px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none"
+    >
+      <div className="mx-auto max-w-md glass-strong rounded-[28px] px-2 py-1.5 shadow-glass pointer-events-auto flex items-center justify-around">
+        {TABS.map((tab) => {
+          const active = pathname === tab.path || (tab.path === '/chats' && pathname === '/');
+          const Icon = tab.icon;
+
+          if (tab.center) {
+            return (
+              <motion.button
+                key={tab.path}
+                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.05 }}
+                onClick={() => navigate(tab.path)}
+                aria-label={tab.label}
+                className={`relative -mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-love-gradient text-white shadow-glow-pink border-2 border-white/20 transition-transform ${
+                  active ? 'ring-4 ring-rose-glow/30' : ''
+                }`}
+              >
+                <Icon className="h-6 w-6" />
+              </motion.button>
+            );
+          }
+
+          return (
+            <button
+              key={tab.path}
+              onClick={() => navigate(tab.path)}
+              aria-label={tab.label}
+              className="relative flex flex-col items-center justify-center px-3 py-1.5 rounded-2xl transition-colors"
+            >
+              {active && (
+                <motion.span
+                  layoutId="nav-active-pill"
+                  transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+                  className="absolute inset-0 rounded-2xl bg-love-gradient-soft border border-rose-glow/30 shadow-glow-pink"
+                />
+              )}
+              <div className="relative z-10 flex flex-col items-center gap-0.5">
+                <Icon
+                  className={`h-5 w-5 transition-colors ${
+                    active ? 'text-rose-glow' : 'text-white/55 hover:text-white/80'
+                  }`}
+                />
+                <span
+                  className={`text-[10px] font-medium tracking-wide ${
+                    active ? 'text-white' : 'text-white/50'
+                  }`}
+                >
+                  {tab.label}
+                </span>
+              </div>
+              {tab.path === '/chats' && unreadChats > 0 && (
+                <span className="absolute top-0.5 right-1.5 z-20 min-w-[16px] h-4 px-1 rounded-full bg-rose-glow text-[10px] font-bold text-white flex items-center justify-center shadow-glow-pink">
+                  {unreadChats}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
