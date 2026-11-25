@@ -9,10 +9,12 @@ import {
   CheckCheck,
   Copy,
   Edit3,
+  EyeOff,
   Heart,
   HeartPulse,
   ImagePlus,
   Mic,
+  Music,
   Phone,
   Pin,
   Reply,
@@ -68,6 +70,8 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     toggleReaction,
     togglePin,
     votePoll,
+    revealWhisper,
+    setMyVibe,
     addMemory,
     markAllRead,
     simulatePartnerReply,
@@ -527,7 +531,58 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                         </div>
                       )}
 
-                      {msg.body && msg.kind !== 'voice' && (
+                      {msg.kind === 'whisper' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!msg.revealed) revealWhisper(msg.id);
+                          }}
+                          className={`text-left w-full rounded-2xl p-3 border transition-all ${
+                            msg.revealed
+                              ? 'bg-violet-glow/15 border-violet-glow/35'
+                              : 'bg-white/5 border-white/20 backdrop-blur-md'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-rose-soft font-semibold mb-1">
+                            <EyeOff className="h-3 w-3" /> {msg.revealed ? 'Secret Whisper Revealed' : 'Secret Whisper • Tap to reveal'}
+                          </div>
+                          <p
+                            className={`text-sm leading-relaxed transition-all duration-300 ${
+                              msg.revealed ? 'blur-0 opacity-100' : 'blur-sm select-none opacity-65'
+                            }`}
+                          >
+                            {msg.body}
+                          </p>
+                        </button>
+                      )}
+
+                      {msg.kind === 'song' && msg.song && (
+                        <div className="rounded-2xl bg-black/30 border border-white/15 p-3 flex items-center gap-3 min-w-[210px]">
+                          <div className="h-10 w-10 rounded-xl bg-love-gradient flex items-center justify-center shrink-0 shadow-glow-pink">
+                            <Music className="h-5 w-5 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[10px] uppercase tracking-wider text-rose-soft font-semibold">
+                              Dedicated to you
+                            </div>
+                            <div className="text-xs font-bold truncate">{msg.song.title}</div>
+                            <div className="text-[11px] text-white/60 truncate">{msg.song.artist}</div>
+                          </div>
+                          <div className="flex items-end gap-0.5 h-5 shrink-0">
+                            {[0, 1, 2, 3].map((bar) => (
+                              <motion.span
+                                key={bar}
+                                animate={{ height: ['25%', '95%', '40%', '85%', '25%'] }}
+                                transition={{ duration: 1.1 + bar * 0.15, repeat: Infinity, ease: 'easeInOut' }}
+                                className="w-1 rounded-full bg-rose-glow"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {msg.body && msg.kind !== 'voice' && msg.kind !== 'whisper' && msg.kind !== 'song' && (
                         <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.body}</p>
                       )}
 
@@ -774,6 +829,32 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
 
         {!pickerOpen && !pollOpen && !recordingVoice && !pendingAttachment && !text && !replyTo && !editingMsg && (
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+            <button
+              type="button"
+              onClick={() =>
+                sendMessage({
+                  kind: 'whisper',
+                  body: `Psst ${partner.display_name}… I’m smiling just thinking about you right now 🤫💜`,
+                  ttlSec,
+                })
+              }
+              className="shrink-0 px-3 py-1 rounded-full bg-violet-glow/20 border border-violet-glow/35 text-[11px] text-violet-200 hover:bg-violet-glow/30 transition-colors"
+            >
+              🤫 Secret Whisper
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                sendMessage({
+                  kind: 'song',
+                  song: { title: 'Until I Found You', artist: 'Stephen Sanchez' },
+                  ttlSec,
+                })
+              }
+              className="shrink-0 px-3 py-1 rounded-full bg-rose-glow/15 border border-rose-glow/30 text-[11px] text-rose-soft hover:bg-rose-glow/25 transition-colors"
+            >
+              🎵 Dedicate Song
+            </button>
             {['Miss you 🥺', 'On my way 🚗', 'Call me? 📞', 'Goodnight 🌙', 'Love you 💖'].map((chip) => (
               <button
                 key={chip}
@@ -782,6 +863,20 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                 className="shrink-0 px-3 py-1 rounded-full glass text-[11px] text-white/80 hover:border-rose-glow/40 hover:text-white transition-colors"
               >
                 {chip}
+              </button>
+            ))}
+            {['Cozy ☕', 'Listening 🎧', 'Missing you 🥺'].map((vibe) => (
+              <button
+                key={vibe}
+                type="button"
+                onClick={() => setMyVibe(vibe)}
+                className={`shrink-0 px-3 py-1 rounded-full text-[11px] border transition-colors ${
+                  me.status_text === vibe
+                    ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
+                    : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                }`}
+              >
+                Vibe: {vibe}
               </button>
             ))}
           </div>

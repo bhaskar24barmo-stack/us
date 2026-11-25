@@ -68,7 +68,7 @@ interface StickerPickerProps {
   onClose: () => void;
 }
 
-const GIF_CATEGORIES: GifCategory[] = ['All', 'Love', 'Hugs', 'Kisses', 'Cute', 'Night'];
+const GIF_CATEGORIES: GifCategory[] = ['Trending', 'Love', 'Hugs', 'Kisses', 'Cute', 'Happy', 'Dance'];
 
 export default function StickerPicker({
   onSelectSticker,
@@ -78,18 +78,26 @@ export default function StickerPicker({
 }: StickerPickerProps) {
   const [tab, setTab] = useState<'stickers' | 'emojis' | 'gifs'>('stickers');
   const [cat, setCat] = useState<'All' | 'Favorites' | 'Recent' | StickerCategory>('All');
-  const [gifCat, setGifCat] = useState<GifCategory>('All');
+  const [gifCat, setGifCat] = useState<GifCategory>('Trending');
   const [gifQuery, setGifQuery] = useState('');
+  const [gifLoading, setGifLoading] = useState(false);
   const [gifResults, setGifResults] = useState<AnimatedGifItem[]>(ANIMATED_GIF_CATALOG);
   const { favoriteStickers, recentStickers, toggleFavoriteSticker } = useAppStore();
 
   useEffect(() => {
     let active = true;
-    void searchAnimatedGifs(gifQuery, gifCat).then((items) => {
-      if (active) setGifResults(items);
-    });
+    setGifLoading(true);
+    const timer = setTimeout(() => {
+      void searchAnimatedGifs(gifQuery, gifCat).then((items) => {
+        if (active) {
+          setGifResults(items);
+          setGifLoading(false);
+        }
+      });
+    }, gifQuery ? 260 : 0);
     return () => {
       active = false;
+      clearTimeout(timer);
     };
   }, [gifQuery, gifCat]);
 
@@ -118,7 +126,13 @@ export default function StickerPicker({
                 tab === t ? 'bg-love-gradient text-white shadow-glow-pink' : 'bg-white/5 text-white/65'
               }`}
             >
-              {t === 'gifs' ? 'GIF Cards' : t}
+              {t === 'gifs' ? (
+                <span className="inline-flex items-center gap-1">
+                  GIF <span className="text-[9px] px-1 py-0.2 rounded bg-white/20">LIVE</span>
+                </span>
+              ) : (
+                t
+              )}
             </button>
           ))}
         </div>
@@ -209,7 +223,7 @@ export default function StickerPicker({
             <input
               value={gifQuery}
               onChange={(e) => setGifQuery(e.target.value)}
-              placeholder="Search animated GIFs…"
+              placeholder="Search GIFs (hug, kiss, love, blush, dance)…"
               className="flex-1 bg-transparent text-xs outline-none placeholder:text-white/40"
             />
             {gifQuery && (
@@ -239,8 +253,14 @@ export default function StickerPicker({
             ))}
           </div>
 
-          {/* Animated GIF Grid */}
-          {gifResults.length === 0 ? (
+          {/* Real Animated GIF Grid */}
+          {gifLoading ? (
+            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-hidden p-0.5">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="aspect-[16/10] rounded-2xl bg-white/5 animate-pulse border border-white/10" />
+              ))}
+            </div>
+          ) : gifResults.length === 0 ? (
             <div className="py-8 text-center text-xs text-white/50">
               No GIFs matching "{gifQuery}"
             </div>
@@ -252,7 +272,7 @@ export default function StickerPicker({
                   type="button"
                   whileTap={{ scale: 0.96 }}
                   onClick={() => onSelectGif(g)}
-                  className="relative rounded-2xl overflow-hidden border border-white/15 bg-ink-900/60 group aspect-[16/11]"
+                  className="relative rounded-2xl overflow-hidden border border-white/15 bg-ink-900/80 group aspect-[16/10]"
                 >
                   <img src={g.url} alt={g.title} className="h-full w-full object-cover" loading="lazy" />
                   <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/65 text-[9px] font-bold tracking-wider text-white">

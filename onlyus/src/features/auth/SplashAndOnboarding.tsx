@@ -70,7 +70,7 @@ export default function SplashAndOnboarding() {
             <h1 className="text-4xl font-bold tracking-tight bg-love-gradient bg-clip-text text-transparent">
               ONLYUS ❤️
             </h1>
-            <p className="mt-2 text-sm text-white/60 tracking-wide">A private universe for two</p>
+            <p className="mt-2 text-sm text-white/70 tracking-wide">Bhaskar &amp; Purvika • Fresh Edition</p>
             <div className="mt-8 w-44 h-1.5 rounded-full bg-white/10 overflow-hidden">
               <motion.div
                 initial={{ x: '-100%' }}
@@ -92,6 +92,9 @@ export default function SplashAndOnboarding() {
           >
             <div className="mx-auto mb-5 h-16 w-16 rounded-2xl bg-love-gradient-soft border border-rose-glow/30 flex items-center justify-center shadow-glow-pink">
               <Sparkles className="h-8 w-8 text-rose-glow" />
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-glow/15 border border-rose-glow/30 text-[11px] font-medium text-rose-soft mb-3">
+              ✨ Bhaskar × Purvika • v2.0
             </div>
             <h2 className="text-3xl font-bold bg-love-gradient bg-clip-text text-transparent">
               Welcome to ONLYUS

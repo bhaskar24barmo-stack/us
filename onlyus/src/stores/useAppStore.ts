@@ -7,6 +7,7 @@ import {
   DEMO_NOTIFICATIONS,
   DEMO_PROFILES,
 } from '@/data/demoData';
+import { playMicroSound } from '@/services/haptics';
 import { playSoftChime, triggerBrowserNotification } from '@/services/notifications';
 import type {
   AppNotification,
@@ -26,7 +27,7 @@ import type {
   UserRole,
 } from '@/types/models';
 
-const STORAGE_KEY = 'onlyus.prototype.v1';
+const STORAGE_KEY = 'onlyus.prototype.v2';
 
 export interface ActiveCallSession {
   id: string;
@@ -146,10 +147,14 @@ interface AppStore extends PersistedSlice {
     gif_url?: string | null;
     gif_title?: string | null;
     poll?: MessagePoll | null;
+    song?: { title: string; artist: string } | null;
+    revealed?: boolean;
     reply_to_id?: string | null;
     ttlSec?: number | null;
   }) => void;
   votePoll: (messageId: string, optionId: string) => void;
+  revealWhisper: (messageId: string) => void;
+  setMyVibe: (vibe: string) => void;
   purgeExpiredMessages: () => void;
   sendHeartbeat: () => void;
   editMessage: (id: string, body: string) => void;
@@ -277,6 +282,8 @@ export const useAppStore = create<AppStore>((set, get) => {
       gif_url = null,
       gif_title = null,
       poll = null,
+      song = null,
+      revealed = false,
       reply_to_id = null,
       ttlSec = null,
     }) {
@@ -297,6 +304,8 @@ export const useAppStore = create<AppStore>((set, get) => {
         gif_url,
         gif_title,
         poll,
+        song,
+        revealed,
         reply_to_id,
         reactions: [],
         edited_at: null,
@@ -310,7 +319,7 @@ export const useAppStore = create<AppStore>((set, get) => {
       const messages = [...get().messages, msg];
       set({ messages });
       sync({ messages });
-      if (get().settings.soundEffects) playSoftChime('send');
+      playMicroSound('send', get().settings.soundEffects);
 
       if (sticker_id) get().recordRecentSticker(sticker_id);
     },
@@ -328,6 +337,22 @@ export const useAppStore = create<AppStore>((set, get) => {
       });
       set({ messages });
       sync({ messages });
+      playMicroSound('tap', get().settings.soundEffects);
+    },
+
+    revealWhisper(messageId) {
+      const messages = get().messages.map((m) =>
+        m.id === messageId ? { ...m, revealed: true } : m
+      );
+      set({ messages });
+      sync({ messages });
+      playMicroSound('reveal', get().settings.soundEffects);
+    },
+
+    setMyVibe(vibe) {
+      const role = get().currentUserRole ?? 'me';
+      get().updateProfile(role, { status_text: vibe });
+      playMicroSound('tap', get().settings.soundEffects);
     },
 
     purgeExpiredMessages() {
@@ -341,9 +366,7 @@ export const useAppStore = create<AppStore>((set, get) => {
     },
 
     sendHeartbeat() {
-      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate([80, 50, 120]);
-      }
+      playMicroSound('heartbeat', get().settings.soundEffects);
       get().sendMessage({
         kind: 'love_note',
         body: '💓 Sent you a live heartbeat pulse — thinking of you right now',

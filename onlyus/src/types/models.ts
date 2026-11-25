@@ -9,6 +9,8 @@ export type MessageKind =
   | 'gif'
   | 'love_note'
   | 'poll'
+  | 'whisper'
+  | 'song'
   | 'system';
 
 export interface PollOption {
@@ -74,6 +76,8 @@ export interface Message {
   gif_url?: string | null;
   gif_title?: string | null;
   poll?: MessagePoll | null;
+  song?: { title: string; artist: string } | null;
+  revealed?: boolean;
   reply_to_id: string | null;
   reactions: Reaction[];
   edited_at: string | null;
