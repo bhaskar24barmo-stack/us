@@ -53,8 +53,10 @@ export default function SecuritySettings() {
           <select value={lock.timeoutMs} onChange={(e) => lock.setTimeoutMs(Number(e.target.value))} className="w-full rounded-xl bg-ink-800 px-4 py-3">
             {TIMEOUTS.map(([v, l]) => <option key={v} value={v}>Auto-lock after {l}</option>)}
           </select>
-          <button onClick={async () => setNote((await lock.enableBiometric()) ? 'Biometric unlock enabled' : 'Biometrics not available here')}
-            className="w-full rounded-xl border border-white/15 py-2">{lock.biometric ? 'Biometric: on (re-enroll)' : 'Enable biometric unlock'}</button>
+          <button onClick={async () => setNote((await lock.enableBiometric()) ? 'Local device biometric enabled (not server-verified)' : 'Biometrics not available here')}
+            className="w-full rounded-xl border border-white/15 py-2 text-xs">
+            {lock.biometric ? 'Local Biometric: On (not server-verified)' : 'Enable Local Biometric (device-only)'}
+          </button>
         </>)}
         <p className="text-xs text-white/40">The app lock protects against someone picking up your unlocked phone. It does not replace your account password.</p>
       </section>

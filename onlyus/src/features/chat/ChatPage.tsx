@@ -17,6 +17,7 @@ import {
   Music,
   Phone,
   Pin,
+  Plus,
   Reply,
   Search,
   Send,
@@ -30,15 +31,41 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { STICKER_CATALOG } from '@/data/demoData';
+import AvatarBubble from '@/components/AvatarBubble';
+import LoveStormOverlay from '@/components/LoveStormOverlay';
+import SnapPeekingAvatar from '@/components/SnapPeekingAvatar';
 import VoiceMessagePlayer from '@/features/chat/VoiceMessagePlayer';
 import VoiceRecorderBar from '@/features/chat/VoiceRecorderBar';
 import { StickerCard } from '@/features/stickers/StickerPicker';
 import StickerPicker from '@/features/stickers/StickerPicker';
 import { ANIMATED_GIF_CATALOG } from '@/services/gifs';
+import { flushOutbox, enqueueOutbox } from '@/features/chat/outbox';
+import { sendOutboxMessageToSupabase } from '@/services/chatSync';
+import { formatWhatsAppLastSeen, OpenPresenceClient } from '@/services/presence';
 import { useAppStore } from '@/stores/useAppStore';
 import type { Message } from '@/types/models';
 
 const REACTION_CHOICES = ['❤️', '🔥', '🥹', '😂', '💘', '🫂'];
+
+function renderSafeTextWithLinks(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s<]+)/g);
+  return parts.map((part, idx) =>
+    /^https?:\/\//.test(part) ? (
+      <a
+        key={idx}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="underline text-sky-200 hover:text-white break-all"
+      >
+        {part}
+      </a>
+    ) : (
+      <span key={idx}>{part}</span>
+    )
+  );
+}
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -58,13 +85,14 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
   const navigate = useNavigate();
   const {
     currentUserRole,
+    pairCode,
     profiles,
     messages,
     partnerTyping,
     notifications,
-    world,
     settings,
     sendMessage,
+    receiveLiveMessage,
     editMessage,
     deleteMessage,
     toggleReaction,
@@ -74,10 +102,9 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     setMyVibe,
     addMemory,
     markAllRead,
-    simulatePartnerReply,
-    simulatePartnerSticker,
     purgeExpiredMessages,
     sendHeartbeat,
+    updateProfile,
     openMediaViewer,
     startCall,
   } = useAppStore();
@@ -96,6 +123,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
   const [editingMsg, setEditingMsg] = useState<Message | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [floatingHeartKey, setFloatingHeartKey] = useState(0);
+  const [stormKey, setStormKey] = useState(0);
   const [pendingAttachment, setPendingAttachment] = useState<{
     url: string;
     type: 'image' | 'video';
@@ -103,14 +131,18 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
   } | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [ttlSec, setTtlSec] = useState<number | null>(null);
-  const [, setNowTick] = useState(Date.now());
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [doubleTapHeartId, setDoubleTapHeartId] = useState<string | null>(null);
   const [pollOpen, setPollOpen] = useState(false);
   const [pollQ, setPollQ] = useState('What should we do tonight?');
   const [pollOpt1, setPollOpt1] = useState('Movie & snacks 🍿');
   const [pollOpt2, setPollOpt2] = useState('Late night drive 🚗');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [whisperMode, setWhisperMode] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [livePartnerTyping, setLivePartnerTyping] = useState(false);
 
+  const presenceRef = useRef<OpenPresenceClient | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -118,8 +150,56 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
   const unreadNotifs = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
-    markAllRead();
-  }, [messages.length, markAllRead]);
+    const handleOnline = () => {
+      void flushOutbox(sendOutboxMessageToSupabase);
+    };
+    window.addEventListener('online', handleOnline);
+    void flushOutbox(sendOutboxMessageToSupabase);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
+  useEffect(() => {
+    if (settings.readReceipts) markAllRead();
+  }, [messages.length, settings.readReceipts, markAllRead]);
+
+  useEffect(() => {
+    const client = new OpenPresenceClient(
+      role,
+      pairCode,
+      (snap) => {
+        updateProfile(partnerRole, {
+          online: snap.online,
+          last_seen: snap.lastSeen,
+        });
+        setLivePartnerTyping(snap.typing);
+      },
+      (incoming) => {
+        receiveLiveMessage(incoming);
+      }
+    );
+    presenceRef.current = client;
+    client.start(true);
+    return () => {
+      client.stop();
+      presenceRef.current = null;
+    };
+  }, [role, partnerRole, pairCode, updateProfile, receiveLiveMessage]);
+
+  const lastBroadcastedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const latest = messages[messages.length - 1];
+    if (!latest || latest.sender_id !== me.id || lastBroadcastedRef.current === latest.id) return;
+    lastBroadcastedRef.current = latest.id;
+    presenceRef.current?.broadcastMessage(latest);
+  }, [messages, me.id]);
+
+  useEffect(() => {
+    presenceRef.current?.setInvisible(!me.online, true);
+  }, [me.online]);
+
+  useEffect(() => {
+    presenceRef.current?.setTyping(text.trim().length > 0, true);
+  }, [text]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -148,7 +228,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
 
   function handleSend(e?: React.FormEvent) {
     e?.preventDefault();
-    const trimmed = text.trim();
+    const trimmed = text.trim().slice(0, 4000);
 
     if (pendingAttachment) {
       sendMessage({
@@ -180,12 +260,30 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
       return;
     }
 
+    const clientId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `cli-${Date.now()}`;
+    const kind = whisperMode ? 'whisper' : 'text';
     sendMessage({
-      kind: 'text',
+      kind,
       body: trimmed,
       reply_to_id: replyTo?.id ?? null,
       ttlSec,
     });
+    void enqueueOutbox({
+      client_id: clientId,
+      conversation_id: 'onlyus-private-thread',
+      sender_id: me.id,
+      kind,
+      body: trimmed,
+      reply_to_id: replyTo?.id ?? null,
+      expires_at: ttlSec ? new Date(Date.now() + ttlSec * 1000).toISOString() : null,
+      status: 'pending',
+      attempts: 0,
+      created_at: new Date().toISOString(),
+    }).then(() => flushOutbox(sendOutboxMessageToSupabase));
+    setWhisperMode(false);
     setText('');
     setReplyTo(null);
     setPickerOpen(false);
@@ -209,53 +307,71 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
   }
 
   const bubbleGradient =
-    settings.chatTheme === 'electric-violet'
-      ? 'from-violet-600 to-indigo-600'
-      : settings.chatTheme === 'aurora-velvet'
-      ? 'from-fuchsia-600 to-purple-700'
-      : settings.chatTheme === 'sunset-blush'
+    settings.chatTheme === 'ocean-blue'
+      ? 'from-sky-500 to-indigo-600'
+      : settings.chatTheme === 'amoled-black'
+      ? 'from-zinc-800 to-zinc-900 border border-white/15'
+      : settings.chatTheme === 'lavender-dream'
+      ? 'from-purple-400 to-fuchsia-500'
+      : settings.chatTheme === 'sunset' || settings.chatTheme === 'sunset-blush'
       ? 'from-rose-500 to-amber-500'
+      : settings.chatTheme === 'midnight-purple' || settings.chatTheme === 'electric-violet'
+      ? 'from-violet-600 to-indigo-700'
       : 'from-[#ff4d8d] to-[#8b5cf6]';
 
   return (
     <div className="flex flex-col h-full pb-24 relative">
       {/* Header */}
-      <header className="glass-strong sticky top-0 z-20 px-4 py-3 flex items-center justify-between border-b border-white/10">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative shrink-0">
-            <div
-              className="h-11 w-11 rounded-2xl flex items-center justify-center text-xl shadow-glow-pink"
-              style={{ background: `linear-gradient(135deg, ${partner.accent_color}, #8b5cf6)` }}
+      <header className="glass-strong sticky top-0 z-20 px-4 py-3 flex items-center justify-between gap-2 border-b border-white/10">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <AvatarBubble profile={partner} size="md" showOnline />
+          <div className="min-w-0 flex-1">
+            <h1 className="font-semibold text-base truncate leading-tight">{partner.display_name}</h1>
+            <button
+              type="button"
+              onClick={() => updateProfile(role, { online: !me.online })}
+              className="text-[11px] truncate block text-left w-full"
+              title="Tap to toggle your Online/Offline status"
             >
-              {partner.avatar_emoji}
-            </div>
-            {partner.online && (
-              <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-ink-950" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="font-semibold text-base truncate">{partner.display_name}</h1>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-glow/20 text-rose-soft border border-rose-glow/30 shrink-0">
-                🔥 {world.streakDays}d
+              <span
+                className={
+                  partnerTyping || livePartnerTyping
+                    ? 'text-rose-soft font-medium'
+                    : partner.online
+                    ? 'text-emerald-300 font-medium'
+                    : 'text-white/55'
+                }
+              >
+                {partnerTyping || livePartnerTyping
+                  ? 'typing…'
+                  : formatWhatsAppLastSeen(partner.online, partner.last_seen)}
               </span>
-            </div>
-            <p className="text-[11px] text-white/60 truncate">
-              {partnerTyping ? 'typing…' : partner.status_text}
-            </p>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <motion.button
-            whileTap={{ scale: 0.85 }}
-            onClick={sendHeartbeat}
-            aria-label="Send heartbeat pulse"
-            title="Send live heartbeat"
-            className="h-9 w-9 rounded-xl glass flex items-center justify-center text-rose-glow hover:bg-rose-glow/15"
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              const next = ttlSec === null ? 86400 : ttlSec === 86400 ? 604800 : null;
+              setTtlSec(next);
+              sendMessage({
+                kind: 'system',
+                body: next
+                  ? `Disappearing messages set to ${next === 86400 ? '24h' : '7d'}`
+                  : 'Disappearing messages turned off',
+              });
+            }}
+            aria-label="Toggle disappearing messages"
+            title="Disappearing messages"
+            className={`h-9 px-2 rounded-xl glass flex items-center justify-center gap-1 text-[11px] ${
+              ttlSec ? 'text-amber-300 border border-amber-400/35' : 'text-white/75 hover:text-white'
+            }`}
           >
-            <HeartPulse className="h-4 w-4" />
-          </motion.button>
+            <Timer className="h-3.5 w-3.5" />
+            {ttlSec ? <span>{ttlSec === 86400 ? '24h' : '7d'}</span> : null}
+          </button>
           <button
             onClick={() => setSearchOpen((v) => !v)}
             aria-label="Search messages"
@@ -332,25 +448,6 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
         </div>
       )}
 
-      {/* Demo simulate reply bar */}
-      <div className="px-4 pt-2 flex items-center justify-between gap-2 text-[11px] text-white/50">
-        <span className="truncate">Private Prototype • Local Demo</span>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={() => simulatePartnerReply()}
-            className="px-2.5 py-1 rounded-full glass hover:border-rose-glow/40 text-rose-soft flex items-center gap-1"
-          >
-            <Sparkles className="h-3 w-3" /> {partner.display_name} Text
-          </button>
-          <button
-            onClick={() => simulatePartnerSticker()}
-            className="px-2.5 py-1 rounded-full glass hover:border-violet-glow/40 text-violet-300 flex items-center gap-1"
-          >
-            💖 Sticker
-          </button>
-        </div>
-      </div>
-
       {/* Messages List */}
       <div
         ref={listRef}
@@ -374,13 +471,14 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
           const isMe = msg.sender_id === me.id;
           const prev = filteredMessages[idx - 1];
           const showDay = !prev || formatDayLabel(prev.created_at) !== formatDayLabel(msg.created_at);
+          const showSender = !prev || prev.sender_id !== msg.sender_id || showDay;
           const replyTarget = msg.reply_to_id ? messages.find((m) => m.id === msg.reply_to_id) : null;
           const sticker = msg.sticker_id ? STICKER_CATALOG.find((s) => s.id === msg.sticker_id) : null;
           const gifSrc =
             msg.gif_url ??
             (msg.gif_id ? ANIMATED_GIF_CATALOG.find((g) => g.id === msg.gif_id)?.url : null);
           const remainingSec = msg.expires_at
-            ? Math.max(0, Math.ceil((new Date(msg.expires_at).getTime() - Date.now()) / 1000))
+            ? Math.max(0, Math.ceil((new Date(msg.expires_at).getTime() - nowTick) / 1000))
             : null;
 
           return (
@@ -399,6 +497,11 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                 transition={{ duration: 0.22 }}
                 className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
               >
+                {showSender && (
+                  <span className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 px-1 ${isMe ? 'text-rose-soft' : 'text-violet-300'}`}>
+                    {isMe ? 'You' : partner.display_name}
+                  </span>
+                )}
                 <div
                   onClick={() => setActiveMenuId(activeMenuId === msg.id ? null : msg.id)}
                   onDoubleClick={() => {
@@ -583,7 +686,9 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                       )}
 
                       {msg.body && msg.kind !== 'voice' && msg.kind !== 'whisper' && msg.kind !== 'song' && (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.body}</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                          {renderSafeTextWithLinks(msg.body)}
+                        </p>
                       )}
 
                       <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-white/65">
@@ -827,6 +932,14 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
           )}
         </AnimatePresence>
 
+        <SnapPeekingAvatar
+          name={partner.display_name}
+          emoji={partner.avatar_emoji}
+          online={partner.online}
+          typing={partnerTyping || livePartnerTyping}
+          onTap={() => setStormKey((k) => k + 1)}
+        />
+
         {!pickerOpen && !pollOpen && !recordingVoice && !pendingAttachment && !text && !replyTo && !editingMsg && (
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
             <button
@@ -947,6 +1060,121 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
           </div>
         )}
 
+        <AnimatePresence>
+          {actionsOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              className="glass-strong rounded-3xl p-3 grid grid-cols-4 gap-2 border border-white/15 shadow-glass"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setActionsOpen(false);
+                  navigate('/camera');
+                }}
+                className="flex flex-col items-center gap-1 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px]"
+              >
+                <Camera className="h-4 w-4 text-rose-glow" />
+                <span>Camera</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActionsOpen(false);
+                  fileInputRef.current?.click();
+                }}
+                className="flex flex-col items-center gap-1 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px]"
+              >
+                <ImagePlus className="h-4 w-4 text-violet-300" />
+                <span>Gallery</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setWhisperMode((w) => !w);
+                  setActionsOpen(false);
+                }}
+                className={`flex flex-col items-center gap-1 py-2 rounded-2xl text-[11px] ${
+                  whisperMode ? 'bg-violet-glow/30 border border-violet-glow/45' : 'bg-white/5 hover:bg-white/10'
+                }`}
+              >
+                <EyeOff className="h-4 w-4 text-violet-300" />
+                <span>Whisper</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPollOpen((v) => !v);
+                  setPickerOpen(false);
+                  setActionsOpen(false);
+                }}
+                className="flex flex-col items-center gap-1 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px]"
+              >
+                <BarChart2 className="h-4 w-4 text-rose-soft" />
+                <span>Poll</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTtlSec((cur) =>
+                    cur === null ? 86400 : cur === 86400 ? 604800 : cur === 604800 ? 2592000 : null
+                  );
+                }}
+                title="Disappearing messages (Off / 24h / 7d / 30d). Note: cannot prevent screenshots."
+                className={`flex flex-col items-center gap-1 py-2 rounded-2xl text-[11px] ${
+                  ttlSec ? 'bg-amber-500/25 border border-amber-400/40 text-amber-200' : 'bg-white/5 hover:bg-white/10'
+                }`}
+              >
+                <Timer className="h-4 w-4 text-amber-300" />
+                <span>
+                  {ttlSec === 86400 ? '24h' : ttlSec === 604800 ? '7d' : ttlSec === 2592000 ? '30d' : 'Timer Off'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sendHeartbeat();
+                  setStormKey((k) => k + 1);
+                  setActionsOpen(false);
+                }}
+                className="flex flex-col items-center gap-1 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px]"
+              >
+                <HeartPulse className="h-4 w-4 text-rose-glow" />
+                <span>Heartbeat</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sendMessage({
+                    kind: 'song',
+                    song: { title: 'Until I Found You', artist: 'Stephen Sanchez' },
+                    ttlSec,
+                  });
+                  setActionsOpen(false);
+                }}
+                className="flex flex-col items-center gap-1 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px]"
+              >
+                <Music className="h-4 w-4 text-emerald-300" />
+                <span>Song</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sendMessage({ kind: 'love_note', body: 'Thinking of you right now 💖' });
+                  setStormKey((k) => k + 1);
+                  setActionsOpen(false);
+                }}
+                className="flex flex-col items-center gap-1 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px]"
+              >
+                <Sparkles className="h-4 w-4 text-sky-300" />
+                <span>Love Note</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {recordingVoice ? (
           <VoiceRecorderBar
             onSend={(url, durationSec) => {
@@ -959,16 +1187,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
             onCancel={() => setRecordingVoice(false)}
           />
         ) : (
-          <form onSubmit={handleSend} className="glass-strong rounded-[26px] p-1.5 flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => navigate('/camera')}
-              aria-label="Open camera"
-              className="h-10 w-10 rounded-full bg-love-gradient text-white flex items-center justify-center shrink-0 shadow-glow-pink"
-            >
-              <Camera className="h-4 w-4" />
-            </button>
-
+          <form onSubmit={handleSend} className="glass-strong rounded-[28px] p-1.5 flex items-center gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -978,56 +1197,53 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
             />
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Attach photo or video"
-              className="h-9 w-9 rounded-full hover:bg-white/10 flex items-center justify-center text-white/70 shrink-0"
+              onClick={() => {
+                setActionsOpen((v) => !v);
+                setPickerOpen(false);
+              }}
+              aria-label="More actions"
+              className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 transition-transform ${
+                actionsOpen
+                  ? 'bg-rose-glow/25 text-rose-glow rotate-45'
+                  : 'bg-love-gradient text-white shadow-glow-pink'
+              }`}
             >
-              <ImagePlus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
             </button>
 
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Write a message…"
+              placeholder={whisperMode ? 'Type a secret whisper…' : 'Message…'}
               className="flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-white/40 min-w-0"
             />
+
+            {(whisperMode || ttlSec) && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-glow/25 text-violet-200 shrink-0">
+                {whisperMode
+                  ? '🤫'
+                  : ttlSec === 86400
+                  ? '⏳24h'
+                  : ttlSec === 604800
+                  ? '⏳7d'
+                  : ttlSec === 2592000
+                  ? '⏳30d'
+                  : `⏳${ttlSec}s`}
+              </span>
+            )}
 
             <button
               type="button"
               onClick={() => {
-                setPollOpen((v) => !v);
-                setPickerOpen(false);
+                setPickerOpen((v) => !v);
+                setActionsOpen(false);
               }}
-              aria-label="Create couple poll"
-              className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                pollOpen ? 'bg-rose-glow/25 text-rose-glow' : 'text-white/65 hover:bg-white/10'
-              }`}
-            >
-              <BarChart2 className="h-4 w-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTtlSec((cur) => (cur === null ? 10 : cur === 10 ? 30 : null))}
-              aria-label="Disappearing message timer"
-              title="Toggle disappearing message timer"
-              className={`h-8 px-2 rounded-full flex items-center gap-1 shrink-0 text-[10px] font-semibold transition-colors ${
-                ttlSec ? 'bg-amber-500/25 text-amber-200 border border-amber-400/40' : 'text-white/60 hover:bg-white/10'
-              }`}
-            >
-              <Timer className="h-3.5 w-3.5" />
-              {ttlSec ? `${ttlSec}s` : '∞'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setPickerOpen((v) => !v)}
-              aria-label="Stickers and emojis"
+              aria-label="Stickers, emojis and GIFs"
               className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                 pickerOpen ? 'bg-rose-glow/25 text-rose-glow' : 'text-white/70 hover:bg-white/10'
               }`}
             >
-              <Smile className="h-4 w-4" />
+              <Smile className="h-5 w-5" />
             </button>
 
             {text.trim() || pendingAttachment ? (
@@ -1052,6 +1268,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
           </form>
         )}
       </div>
+      <LoveStormOverlay burstKey={stormKey} />
     </div>
   );
 }

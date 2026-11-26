@@ -5,25 +5,32 @@ import { requestBrowserNotificationPermission } from '@/services/notifications';
 import { useAppStore } from '@/stores/useAppStore';
 
 export function ToastStack() {
+  const navigate = useNavigate();
   const { toasts, dismissToast } = useAppStore();
   return (
-    <div className="fixed top-3 inset-x-0 z-50 flex flex-col items-center gap-2 px-4 pointer-events-none">
+    <div className="absolute top-3 inset-x-0 z-50 flex flex-col items-center gap-2 px-3 pointer-events-none">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div
             key={t.id}
-            initial={{ opacity: 0, y: -18, scale: 0.95 }}
+            initial={{ opacity: 0, y: -24, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -12, scale: 0.95 }}
-            onClick={() => dismissToast(t.id)}
-            className="w-full max-w-sm glass-strong rounded-2xl px-4 py-3 shadow-glow-pink border border-rose-glow/35 pointer-events-auto cursor-pointer flex items-center gap-3"
+            exit={{ opacity: 0, y: -16, scale: 0.94 }}
+            onClick={() => {
+              dismissToast(t.id);
+              navigate(t.kind === 'missed_call' ? '/calls' : '/chats');
+            }}
+            className="w-full max-w-[390px] bg-[#161024]/95 backdrop-blur-xl rounded-2xl px-3.5 py-2.5 shadow-[0_12px_32px_rgba(0,0,0,0.65)] border border-white/15 pointer-events-auto cursor-pointer flex items-center gap-3"
           >
-            <div className="h-9 w-9 rounded-xl bg-love-gradient flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-full bg-love-gradient flex items-center justify-center shrink-0 shadow-glow-pink">
               <Heart className="h-4 w-4 text-white fill-white" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold truncate">{t.title}</div>
-              <div className="text-[11px] text-white/70 truncate">{t.body}</div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold truncate text-white">{t.title}</span>
+                <span className="text-[10px] text-white/45 shrink-0">now</span>
+              </div>
+              <div className="text-[11px] text-white/75 truncate">{t.body}</div>
             </div>
           </motion.div>
         ))}
@@ -34,7 +41,7 @@ export function ToastStack() {
 
 export default function NotificationCenter({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
-  const { notifications, notifPrefs, markNotifRead, markAllNotifsRead, updateNotifPrefs } = useAppStore();
+  const { notifications, notifPrefs, markNotifRead, markAllNotifsRead, clearAllNotifications, updateNotifPrefs } = useAppStore();
 
   async function enableBrowserNotifs() {
     const res = await requestBrowserNotificationPermission();
@@ -48,7 +55,7 @@ export default function NotificationCenter({ open, onClose }: { open: boolean; o
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
+          className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
           onClick={onClose}
         >
           <motion.aside
@@ -70,6 +77,12 @@ export default function NotificationCenter({ open, onClose }: { open: boolean; o
                   className="text-xs text-rose-soft flex items-center gap-1 px-2.5 py-1 rounded-full glass"
                 >
                   <CheckCheck className="h-3.5 w-3.5" /> Read all
+                </button>
+                <button
+                  onClick={clearAllNotifications}
+                  className="text-xs text-white/70 hover:text-white px-2.5 py-1 rounded-full glass"
+                >
+                  Clear
                 </button>
                 <button
                   onClick={onClose}

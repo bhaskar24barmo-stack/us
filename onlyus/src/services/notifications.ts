@@ -1,8 +1,18 @@
+let sharedNotifCtx: AudioContext | null = null;
+
+function getNotifAudioCtx(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!sharedNotifCtx) sharedNotifCtx = new AudioCtx();
+  if (sharedNotifCtx.state === 'suspended') void sharedNotifCtx.resume().catch(() => {});
+  return sharedNotifCtx;
+}
+
 export function playSoftChime(type: 'send' | 'receive' | 'ring' = 'receive') {
   try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    const ctx = getNotifAudioCtx();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);

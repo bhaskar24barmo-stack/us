@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { BookmarkPlus, ChevronLeft, ChevronRight, Heart, Trash2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { BookmarkPlus, ChevronLeft, ChevronRight, Download, Heart, Trash2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useAppStore } from '@/stores/useAppStore';
 
@@ -39,6 +39,15 @@ export default function MediaViewerModal() {
       setZoom(1);
       openMediaViewer(mediaMessages[currentIdx + 1].id);
     }
+  }
+
+  function handleSaveToPhone() {
+    if (!current?.media) return;
+    const a = document.createElement('a');
+    a.href = current.media.url;
+    a.download = `ONLYUS-${current.id}.${current.kind === 'video' ? 'mp4' : 'jpg'}`;
+    a.click();
+    pushNotification('photo', 'Saved to device', 'Downloaded to your device.');
   }
 
   function handleSaveToGallery() {
@@ -94,6 +103,13 @@ export default function MediaViewerModal() {
                 {zoom > 1 ? <ZoomOut className="h-4 w-4" /> : <ZoomIn className="h-4 w-4" />}
               </button>
             )}
+            <button
+              onClick={handleSaveToPhone}
+              aria-label="Save to phone"
+              className="h-10 w-10 rounded-full glass flex items-center justify-center text-white/85 hover:text-white"
+            >
+              <Download className="h-4 w-4" />
+            </button>
             <button
               onClick={handleSaveToGallery}
               aria-label="Save to gallery"

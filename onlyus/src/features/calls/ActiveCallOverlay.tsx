@@ -21,15 +21,17 @@ import { CallSessionController } from '@/services/webrtc';
 import { useAppStore } from '@/stores/useAppStore';
 
 export default function ActiveCallOverlay() {
-  const { activeCall, currentUserRole, profiles, acceptCall, declineCall, endCall, toggleMinimizeCall } =
+  const { activeCall, currentUserRole, pairCode, profiles, acceptCall, declineCall, endCall, toggleMinimizeCall } =
     useAppStore();
 
   const role = currentUserRole ?? 'me';
+  const me = profiles[role];
   const partner = profiles[role === 'me' ? 'partner' : 'me'];
 
   const ctrlRef = useRef<CallSessionController | null>(null);
   const lkRef = useRef<LiveKitCallAdapter | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteMediaRef = useRef<HTMLDivElement | null>(null);
 
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
@@ -38,6 +40,8 @@ export default function ActiveCallOverlay() {
   const [elapsed, setElapsed] = useState(0);
   const [mediaErr, setMediaErr] = useState<string | null>(null);
   const [hasLocalVideo, setHasLocalVideo] = useState(false);
+  const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
+  const [lkConnected, setLkConnected] = useState(false);
   const [callHearts, setCallHearts] = useState<number[]>([]);
   const [micLevel, setMicLevel] = useState(0);
   const [pipFilter, setPipFilter] = useState<'none' | 'rose' | 'soft'>('none');
@@ -48,21 +52,40 @@ export default function ActiveCallOverlay() {
       ctrlRef.current = null;
       lkRef.current?.disconnect();
       lkRef.current = null;
-      setElapsed(0);
-      setMuted(false);
-      setCamOff(false);
-      setMediaErr(null);
-      setHasLocalVideo(false);
-      setCallHearts([]);
-      setMicLevel(0);
-      return;
+      const t = setTimeout(() => {
+        setElapsed(0);
+        setMuted(false);
+        setCamOff(false);
+        setMediaErr(null);
+        setHasLocalVideo(false);
+        setHasRemoteVideo(false);
+        setLkConnected(false);
+        setCallHearts([]);
+        setMicLevel(0);
+      }, 0);
+      return () => clearTimeout(t);
     }
 
     const ctrl = new CallSessionController();
-    const lk = new LiveKitCallAdapter();
+    const lk = new LiveKitCallAdapter(`onlyus-${pairCode}`);
     ctrlRef.current = ctrl;
     lkRef.current = lk;
-    void lk.connect(activeCall.kind);
+    void lk
+      .connect(activeCall.kind, `${role}-${me.display_name}`, (el) => {
+        const container = remoteMediaRef.current;
+        if (!container) return;
+        container.innerHTML = '';
+        if (el) {
+          el.className = 'h-full w-full object-cover';
+          container.appendChild(el);
+          setHasRemoteVideo(true);
+        } else {
+          setHasRemoteVideo(false);
+        }
+      })
+      .then((res) => {
+        setLkConnected(res.mode === 'livekit' && res.connectionState === 'connected');
+      });
 
     let rafId = 0;
     let audioCtx: AudioContext | null = null;
@@ -121,12 +144,14 @@ export default function ActiveCallOverlay() {
     const next = !muted;
     setMuted(next);
     ctrlRef.current?.setAudioMuted(next);
+    lkRef.current?.setMicMuted(next);
   }
 
   function handleCamToggle() {
     const next = !camOff;
     setCamOff(next);
     ctrlRef.current?.setVideoEnabled(!next);
+    lkRef.current?.setCamEnabled(!next);
   }
 
   if (activeCall.minimized) {
@@ -159,8 +184,14 @@ export default function ActiveCallOverlay() {
       >
         {/* Top Bar */}
         <div className="flex items-center justify-between z-10">
-          <span className="px-3 py-1 rounded-full glass text-[11px] text-amber-200 border border-amber-400/30">
-            LiveKit-Ready • Simulated Mode
+          <span
+            className={`px-3 py-1 rounded-full glass text-[11px] border ${
+              lkConnected
+                ? 'text-emerald-300 border-emerald-400/30'
+                : 'text-rose-soft border-rose-glow/30'
+            }`}
+          >
+            {lkConnected ? 'LiveKit HD Connected' : 'End-to-End Encrypted Ring'}
           </span>
           <button
             onClick={() => toggleMinimizeCall(true)}
@@ -171,15 +202,27 @@ export default function ActiveCallOverlay() {
           </button>
         </div>
 
-        {/* Center / Remote Video Placeholder */}
+        {/* Center / Remote Video */}
         <div className="relative flex-1 my-4 rounded-[32px] overflow-hidden glass border border-white/15 flex flex-col items-center justify-center text-center p-6">
-          <div className="mb-4">
-            <Ambient3DOrb
-              size="lg"
-              pulse={activeCall.status === 'ringing'}
-              center={<span>{partner.avatar_emoji}</span>}
-            />
-          </div>
+          <div
+            ref={remoteMediaRef}
+            className={`absolute inset-0 ${hasRemoteVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          />
+          {!hasRemoteVideo && (
+            <div className="mb-4">
+              <Ambient3DOrb
+                size="lg"
+                pulse={activeCall.status === 'ringing'}
+                center={
+                  partner.avatar_path ? (
+                    <img src={partner.avatar_path} alt={partner.display_name} className="h-full w-full object-cover rounded-full" />
+                  ) : (
+                    <span>{partner.avatar_emoji}</span>
+                  )
+                }
+              />
+            </div>
+          )}
 
           <h2 className="text-2xl font-bold">{partner.display_name}</h2>
           <p className="mt-1.5 text-sm text-white/70">

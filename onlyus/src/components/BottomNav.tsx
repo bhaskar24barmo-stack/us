@@ -1,14 +1,14 @@
 import { motion } from 'framer-motion';
-import { Camera, Heart, MessageCircleHeart, Phone, User } from 'lucide-react';
+import { Home, Image, Menu, MessageCircleHeart, Phone } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/stores/useAppStore';
 
 const TABS = [
-  { path: '/chats', label: 'Chats', icon: MessageCircleHeart },
+  { path: '/home', label: 'Home', icon: Home },
+  { path: '/chats', label: 'Chat', icon: MessageCircleHeart },
+  { path: '/gallery', label: 'Gallery', icon: Image },
   { path: '/calls', label: 'Calls', icon: Phone },
-  { path: '/camera', label: 'Camera', icon: Camera, center: true },
-  { path: '/memories', label: 'Our World', icon: Heart },
-  { path: '/profile', label: 'Profile', icon: User },
+  { path: '/more', label: 'More', icon: Menu },
 ];
 
 export default function BottomNav() {
@@ -23,29 +23,20 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed bottom-0 inset-x-0 z-30 px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none"
+      className="absolute bottom-0 inset-x-0 z-30 px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none"
     >
       <div className="mx-auto max-w-md glass-strong rounded-[28px] px-2 py-1.5 shadow-glass pointer-events-auto flex items-center justify-around">
         {TABS.map((tab) => {
-          const active = pathname === tab.path || (tab.path === '/chats' && pathname === '/');
+          const active =
+            pathname === tab.path ||
+            (tab.path === '/home' && pathname === '/') ||
+            (tab.path === '/more' &&
+              (pathname === '/profile' ||
+                pathname === '/settings/security' ||
+                pathname === '/countdowns' ||
+                pathname === '/bucket-list' ||
+                pathname === '/journal'));
           const Icon = tab.icon;
-
-          if (tab.center) {
-            return (
-              <motion.button
-                key={tab.path}
-                whileTap={{ scale: 0.9 }}
-                whileHover={{ scale: 1.05 }}
-                onClick={() => navigate(tab.path)}
-                aria-label={tab.label}
-                className={`relative -mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-love-gradient text-white shadow-glow-pink border-2 border-white/20 transition-transform ${
-                  active ? 'ring-4 ring-rose-glow/30' : ''
-                }`}
-              >
-                <Icon className="h-6 w-6" />
-              </motion.button>
-            );
-          }
 
           return (
             <button

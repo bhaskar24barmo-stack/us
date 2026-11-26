@@ -9,3 +9,9 @@ dist-ssr/
 *.log
 
 .vercel
+
+# Android secrets & build outputs
+*.keystore
+*.jks
+google-services.json
+dist-apk/

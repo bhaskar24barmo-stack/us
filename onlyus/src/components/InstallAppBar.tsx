@@ -18,16 +18,14 @@ export default function InstallAppBar() {
       return false;
     }
   });
-  const [isStandalone, setIsStandalone] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone] = useState(
+    () =>
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true
+  );
+  const [isIOS] = useState(() => /iPad|iPhone|iPod/.test(navigator.userAgent));
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-    setIsStandalone(standalone);
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent));
-
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);

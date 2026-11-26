@@ -27,7 +27,7 @@ import type {
   UserRole,
 } from '@/types/models';
 
-const STORAGE_KEY = 'onlyus.prototype.v2';
+const STORAGE_KEY = 'onlyus.v4';
 
 export interface ActiveCallSession {
   id: string;
@@ -49,6 +49,7 @@ export interface InAppToast {
 interface PersistedSlice {
   currentUserRole: UserRole | null;
   onboarded: boolean;
+  pairCode: string;
   profiles: Record<UserRole, Profile>;
   messages: Message[];
   calls: Call[];
@@ -87,6 +88,7 @@ function loadInitial(): PersistedSlice {
       return {
         currentUserRole: parsed.currentUserRole ?? null,
         onboarded: parsed.onboarded ?? false,
+        pairCode: parsed.pairCode ?? 'ONLYUS-849210',
         profiles: parsed.profiles ?? DEMO_PROFILES,
         messages: parsed.messages ?? DEMO_MESSAGES,
         calls: parsed.calls ?? DEMO_CALLS,
@@ -104,6 +106,7 @@ function loadInitial(): PersistedSlice {
   return {
     currentUserRole: null,
     onboarded: false,
+    pairCode: 'ONLYUS-849210',
     profiles: DEMO_PROFILES,
     messages: DEMO_MESSAGES,
     calls: DEMO_CALLS,
@@ -135,7 +138,9 @@ interface AppStore extends PersistedSlice {
   signInAsRole: (role: UserRole) => void;
   completeOnboarding: () => void;
   signOutDemo: () => void;
+  setPairCode: (code: string) => void;
   updateProfile: (role: UserRole, patch: Partial<Profile>) => void;
+  receiveLiveMessage: (msg: Message) => void;
 
   // Chat
   sendMessage: (payload: {
@@ -181,6 +186,7 @@ interface AppStore extends PersistedSlice {
   pushNotification: (kind: NotificationKind, title: string, body: string, action_route?: string) => void;
   markNotifRead: (id: string) => void;
   markAllNotifsRead: () => void;
+  clearAllNotifications: () => void;
   updateNotifPrefs: (patch: Partial<NotificationPrefs>) => void;
   dismissToast: (id: string) => void;
 
@@ -228,6 +234,7 @@ export const useAppStore = create<AppStore>((set, get) => {
     const merged: PersistedSlice = {
       currentUserRole: next.currentUserRole !== undefined ? next.currentUserRole : s.currentUserRole,
       onboarded: next.onboarded !== undefined ? next.onboarded : s.onboarded,
+      pairCode: next.pairCode ?? s.pairCode,
       profiles: next.profiles ?? s.profiles,
       messages: next.messages ?? s.messages,
       calls: next.calls ?? s.calls,
@@ -264,6 +271,31 @@ export const useAppStore = create<AppStore>((set, get) => {
       sync({ currentUserRole: null });
     },
 
+    setPairCode(code) {
+      const normalized = code.trim().toUpperCase() || 'ONLYUS-849210';
+      set({ pairCode: normalized });
+      sync({ pairCode: normalized });
+    },
+
+    receiveLiveMessage(msg) {
+      const exists = get().messages.some((m) => m.id === msg.id);
+      if (exists) return;
+      const messages = [...get().messages, msg];
+      set({ messages });
+      sync({ messages });
+      const role = get().currentUserRole ?? 'me';
+      const partner = get().profiles[role === 'me' ? 'partner' : 'me'];
+      const preview =
+        msg.kind === 'gif'
+          ? 'Sent a GIF 🎞️'
+          : msg.kind === 'sticker'
+          ? 'Sent a sticker ✨'
+          : msg.kind === 'whisper'
+          ? 'Sent a Secret Whisper 🤫'
+          : msg.body || 'Sent a message';
+      get().pushNotification('message', partner.display_name, preview, '/chats');
+    },
+
     updateProfile(role, patch) {
       const profiles = {
         ...get().profiles,
@@ -295,7 +327,7 @@ export const useAppStore = create<AppStore>((set, get) => {
         id: `msg-${nowMs}-${Math.random().toString(36).slice(2, 6)}`,
         conversation_id: CONVERSATION_ID,
         sender_id: sender.id,
-        client_id: `cli-${nowMs}`,
+        client_id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cli-${nowMs}`,
         kind,
         body,
         media,
@@ -507,6 +539,7 @@ export const useAppStore = create<AppStore>((set, get) => {
 
     startCall(kind) {
       const id = `call-${Date.now()}`;
+      const role = get().currentUserRole ?? 'me';
       set({
         activeCall: {
           id,
@@ -515,24 +548,18 @@ export const useAppStore = create<AppStore>((set, get) => {
           status: 'ringing',
           minimized: false,
           startedAt: null,
-          simulated: true,
+          simulated: false,
         },
       });
       if (get().settings.soundEffects) playSoftChime('ring');
-
-      // Simulated remote answer after 2.2s
-      setTimeout(() => {
-        const cur = get().activeCall;
-        if (cur && cur.id === id && cur.status === 'ringing') {
-          set({
-            activeCall: {
-              ...cur,
-              status: 'active',
-              startedAt: Date.now(),
-            },
-          });
-        }
-      }, 2200);
+      void import('@/services/callSignaling').then(({ broadcastCallSignal }) => {
+        broadcastCallSignal(get().pairCode, {
+          type: 'call:ring',
+          callId: id,
+          kind,
+          fromRole: role,
+        });
+      });
     },
 
     simulateIncomingCall(kind) {
@@ -545,7 +572,7 @@ export const useAppStore = create<AppStore>((set, get) => {
           status: 'ringing',
           minimized: false,
           startedAt: null,
-          simulated: true,
+          simulated: false,
         },
       });
       if (get().settings.soundEffects) playSoftChime('ring');
@@ -554,13 +581,28 @@ export const useAppStore = create<AppStore>((set, get) => {
     acceptCall() {
       const cur = get().activeCall;
       if (!cur) return;
+      const role = get().currentUserRole ?? 'me';
       set({ activeCall: { ...cur, status: 'active', startedAt: Date.now() } });
+      void import('@/services/callSignaling').then(({ broadcastCallSignal }) => {
+        broadcastCallSignal(get().pairCode, {
+          type: 'call:accept',
+          callId: cur.id,
+          fromRole: role,
+        });
+      });
     },
 
     declineCall() {
       const cur = get().activeCall;
       if (!cur) return;
       const role = get().currentUserRole ?? 'me';
+      void import('@/services/callSignaling').then(({ broadcastCallSignal }) => {
+        broadcastCallSignal(get().pairCode, {
+          type: 'call:decline',
+          callId: cur.id,
+          fromRole: role,
+        });
+      });
       const myId = get().profiles[role].id;
       const partnerId = get().profiles[role === 'me' ? 'partner' : 'me'].id;
       const entry: Call = {
@@ -587,6 +629,13 @@ export const useAppStore = create<AppStore>((set, get) => {
       const cur = get().activeCall;
       if (!cur) return;
       const role = get().currentUserRole ?? 'me';
+      void import('@/services/callSignaling').then(({ broadcastCallSignal }) => {
+        broadcastCallSignal(get().pairCode, {
+          type: 'call:end',
+          callId: cur.id,
+          fromRole: role,
+        });
+      });
       const myId = get().profiles[role].id;
       const partnerId = get().profiles[role === 'me' ? 'partner' : 'me'].id;
       const duration = cur.startedAt ? Math.max(1, Math.round((Date.now() - cur.startedAt) / 1000)) : 0;
@@ -630,8 +679,15 @@ export const useAppStore = create<AppStore>((set, get) => {
       set({ notifications, toasts: [...get().toasts, toast] });
       sync({ notifications });
 
-      if (prefs.sound && get().settings.soundEffects) playSoftChime('receive');
-      if (prefs.browserPush) triggerBrowserNotification(title, notif.body);
+      const nowHm = new Date().toTimeString().slice(0, 5);
+      const inQuiet =
+        prefs.quietHoursEnabled &&
+        (prefs.quietStart <= prefs.quietEnd
+          ? nowHm >= prefs.quietStart && nowHm <= prefs.quietEnd
+          : nowHm >= prefs.quietStart || nowHm <= prefs.quietEnd);
+
+      if (!inQuiet && prefs.sound && get().settings.soundEffects) playSoftChime('receive');
+      if (!inQuiet && prefs.browserPush) triggerBrowserNotification(title, notif.body);
 
       setTimeout(() => {
         get().dismissToast(toast.id);
@@ -648,6 +704,11 @@ export const useAppStore = create<AppStore>((set, get) => {
       const notifications = get().notifications.map((n) => ({ ...n, read: true }));
       set({ notifications });
       sync({ notifications });
+    },
+
+    clearAllNotifications() {
+      set({ notifications: [], toasts: [] });
+      sync({ notifications: [] });
     },
 
     updateNotifPrefs(patch) {

@@ -86,8 +86,8 @@ export default function StickerPicker({
 
   useEffect(() => {
     let active = true;
-    setGifLoading(true);
     const timer = setTimeout(() => {
+      setGifLoading(true);
       void searchAnimatedGifs(gifQuery, gifCat).then((items) => {
         if (active) {
           setGifResults(items);
@@ -113,7 +113,7 @@ export default function StickerPicker({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="glass-strong rounded-3xl p-3.5 shadow-glass border border-white/15"
+      className="glass-strong rounded-3xl p-3 shadow-glass border border-white/15 max-h-[38vh] flex flex-col overflow-hidden"
     >
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex gap-1.5">

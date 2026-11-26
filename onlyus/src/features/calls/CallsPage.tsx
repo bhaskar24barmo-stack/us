@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Sparkles, Video } from 'lucide-react';
+import { Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Video } from 'lucide-react';
+import AvatarBubble from '@/components/AvatarBubble';
 import TiltCard from '@/components/TiltCard';
 import { getLiveKitConfig } from '@/services/livekit';
 import { useAppStore } from '@/stores/useAppStore';
@@ -12,7 +13,7 @@ function formatDur(sec?: number) {
 }
 
 export default function CallsPage() {
-  const { currentUserRole, profiles, calls, startCall, simulateIncomingCall } = useAppStore();
+  const { currentUserRole, profiles, calls, startCall } = useAppStore();
   const role = currentUserRole ?? 'me';
   const me = profiles[role];
   const partner = profiles[role === 'me' ? 'partner' : 'me'];
@@ -25,7 +26,7 @@ export default function CallsPage() {
         <div>
           <h1 className="text-2xl font-bold">Calls</h1>
           <p className="text-xs text-white/60">
-            {lk.configured ? 'LiveKit Connected' : 'LiveKit-ready • Simulated remote caller'}
+            {lk.configured ? 'LiveKit HD Connected' : 'LiveKit HD Voice & Video'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -51,15 +52,10 @@ export default function CallsPage() {
       {/* Quick Call Card */}
       <TiltCard className="glass rounded-3xl p-5 bg-love-gradient-soft border border-rose-glow/25 space-y-4">
         <div className="flex items-center gap-3.5">
-          <div
-            className="h-14 w-14 rounded-2xl flex items-center justify-center text-2xl shadow-glow-pink"
-            style={{ background: `linear-gradient(135deg, ${partner.accent_color}, #8b5cf6)` }}
-          >
-            {partner.avatar_emoji}
-          </div>
-          <div className="flex-1">
-            <h2 className="font-semibold text-base">{partner.display_name}</h2>
-            <p className="text-xs text-white/65">{partner.status_text}</p>
+          <AvatarBubble profile={partner} size="lg" showOnline />
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold text-base truncate">{partner.display_name}</h2>
+            <p className="text-xs text-white/65 truncate">{partner.status_text}</p>
           </div>
         </div>
 
@@ -75,21 +71,6 @@ export default function CallsPage() {
             className="py-3 rounded-2xl bg-love-gradient text-xs font-semibold flex items-center justify-center gap-2 shadow-glow-pink"
           >
             <Video className="h-4 w-4" /> Video Call
-          </button>
-        </div>
-
-        <div className="pt-1 flex gap-2">
-          <button
-            onClick={() => simulateIncomingCall('voice')}
-            className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] text-white/75 flex items-center justify-center gap-1.5"
-          >
-            <Sparkles className="h-3 w-3 text-rose-glow" /> Test Incoming Voice
-          </button>
-          <button
-            onClick={() => simulateIncomingCall('video')}
-            className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] text-white/75 flex items-center justify-center gap-1.5"
-          >
-            <Sparkles className="h-3 w-3 text-violet-glow" /> Test Incoming Video
           </button>
         </div>
       </TiltCard>

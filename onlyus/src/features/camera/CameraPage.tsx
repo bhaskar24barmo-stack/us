@@ -77,13 +77,20 @@ export default function CameraPage() {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode },
-        audio: true,
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: mode },
+          audio: false,
+        });
+      } catch {
+        // Fallback for desktop webcams or browsers rejecting facingMode constraint
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
       }
       setCamStatus('ready');
     } catch (err) {
@@ -97,9 +104,10 @@ export default function CameraPage() {
   }
 
   useEffect(() => {
-    void initCamera(facingMode);
+    const t = setTimeout(() => void initCamera(facingMode), 0);
     return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+      clearTimeout(t);
+      streamRef.current?.getTracks().forEach((tr) => tr.stop());
     };
   }, [facingMode]);
 
@@ -130,16 +138,22 @@ export default function CameraPage() {
     setShutterFlash(true);
     setTimeout(() => setShutterFlash(false), 180);
 
+    const vw = video.videoWidth || 720;
+    const vh = video.videoHeight || 1280;
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 720;
-    canvas.height = video.videoHeight || 1280;
+    canvas.width = vw;
+    canvas.height = vh;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    const sw = vw / zoom;
+    const sh = vh / zoom;
+    const sx = (vw - sw) / 2;
+    const sy = (vh - sh) / 2;
     if (facingMode === 'user') {
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
     }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
     canvas.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -234,18 +248,62 @@ export default function CameraPage() {
     if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  function handleSendSnap(saveToMemories = false) {
+  async function handleSendSnap(saveToMemories = false) {
     if (!preview) return;
+    let finalUrl = preview.url;
+    let finalIsObject = preview.isObjectUrl;
+
+    if (preview.type === 'image') {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = preview.url;
+        });
+        const swap = rotation % 180 !== 0;
+        const baseW = swap ? img.height : img.width;
+        const baseH = swap ? img.width : img.height;
+        const size = squareCrop ? Math.min(baseW, baseH) : 0;
+        const outW = squareCrop ? size : baseW;
+        const outH = squareCrop ? size : baseH;
+        const c = document.createElement('canvas');
+        c.width = outW;
+        c.height = outH;
+        const ctx = c.getContext('2d');
+        if (ctx) {
+          ctx.filter = FILTERS[filterIdx].css === 'none' ? 'none' : FILTERS[filterIdx].css;
+          ctx.save();
+          ctx.translate(outW / 2, outH / 2);
+          ctx.rotate((rotation * Math.PI) / 180);
+          ctx.drawImage(img, -img.width / 2, -img.height / 2);
+          ctx.restore();
+          ctx.filter = 'none';
+          if (drawCanvasRef.current) {
+            ctx.drawImage(drawCanvasRef.current, 0, 0, outW, outH);
+          }
+          const blob = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/jpeg', 0.88));
+          if (blob) {
+            finalUrl = URL.createObjectURL(blob);
+            finalIsObject = true;
+          }
+        }
+      } catch {
+        // Fallback to original preview URL
+      }
+    }
+
     sendMessage({
       kind: preview.type,
       body: caption.trim() || null,
       media: {
         id: `snap-${Date.now()}`,
         type: preview.type,
-        url: preview.url,
+        url: finalUrl,
         caption: caption.trim() || undefined,
         filter: FILTERS[filterIdx].name,
-        isObjectUrl: preview.isObjectUrl,
+        isObjectUrl: finalIsObject,
       },
     });
     if (saveToMemories && preview.type === 'image') {
@@ -253,7 +311,7 @@ export default function CameraPage() {
         title: caption.trim() || 'Captured Moment',
         date: new Date().toISOString().slice(0, 10),
         note: caption.trim() || 'Shot with ONLYUS Camera',
-        image_url: preview.url,
+        image_url: finalUrl,
         favorite: true,
       });
     }
@@ -274,22 +332,23 @@ export default function CameraPage() {
 
       {!preview ? (
         <>
-          {/* Live Camera Viewfinder */}
+          {/* Live Camera Viewfinder (always mounted so videoRef is valid when stream attaches) */}
           <div className="relative flex-1 overflow-hidden rounded-b-[32px] bg-ink-950">
-            {camStatus === 'ready' ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="h-full w-full object-cover transition-transform duration-200"
-                style={{
-                  filter: FILTERS[filterIdx].css,
-                  transform: `${facingMode === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})`,
-                }}
-              />
-            ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center bg-midnight-radial">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`h-full w-full object-cover transition-transform duration-200 ${
+                camStatus === 'ready' ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+              style={{
+                filter: FILTERS[filterIdx].css,
+                transform: `${facingMode === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})`,
+              }}
+            />
+            {camStatus !== 'ready' && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-midnight-radial">
                 <div className="h-16 w-16 rounded-2xl glass flex items-center justify-center mb-4">
                   <Camera className="h-8 w-8 text-rose-glow" />
                 </div>

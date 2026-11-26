@@ -27,7 +27,17 @@ export interface MessagePoll {
 export type CallKind = 'voice' | 'video';
 export type CallStatus = 'ringing' | 'active' | 'ended' | 'missed' | 'declined' | 'failed';
 
-export type ChatThemeId = 'midnight-rose' | 'electric-violet' | 'aurora-velvet' | 'sunset-blush';
+export type ChatThemeId =
+  | 'midnight-rose'
+  | 'electric-violet'
+  | 'aurora-velvet'
+  | 'sunset-blush'
+  | 'midnight-purple'
+  | 'rose-pink'
+  | 'ocean-blue'
+  | 'amoled-black'
+  | 'sunset'
+  | 'lavender-dream';
 export type WallpaperId = 'constellation' | 'nebula' | 'hearts' | 'minimal';
 
 export interface Profile {
@@ -193,4 +203,109 @@ export interface AppSettings {
   readReceipts: boolean;
   typingIndicators: boolean;
   reducedMotionOverride: boolean;
+  coupleModules?: {
+    dailyQuestion: boolean;
+    countdowns: boolean;
+    bucketList: boolean;
+    journal: boolean;
+    moodCheckin: boolean;
+  };
+}
+
+export type PingKind = 'thinking_of_you' | 'miss_you' | 'hug' | 'kiss';
+
+export interface Countdown {
+  id: string;
+  conversation_id: string;
+  title: string;
+  target_at: string;
+  emoji: string;
+  repeat_yearly: boolean;
+  created_by: string;
+  created_at: string;
+}
+
+export interface BucketListItem {
+  id: string;
+  conversation_id: string;
+  title: string;
+  notes: string | null;
+  done_at: string | null;
+  done_by: string | null;
+  created_by: string;
+  sort: number;
+  created_at: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  conversation_id: string;
+  author_id: string;
+  title: string;
+  body: string;
+  mood: string | null;
+  visibility: 'shared' | 'private';
+  entry_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MoodCheckin {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  mood: string;
+  note: string | null;
+  created_at: string;
+}
+
+export interface Ping {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  kind: PingKind;
+  created_at: string;
+}
+
+export interface ScheduledMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  kind: MessageKind;
+  body: string | null;
+  media_id: string | null;
+  send_at: string;
+  sent_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+}
+
+export interface HomeSummary {
+  days_together: number;
+  streak_count: number;
+  unread_count: number;
+  next_countdown: Countdown | null;
+  partner_mood: MoodCheckin | null;
+  today_question: {
+    id: string;
+    prompt: string;
+    my_answer: string | null;
+    partner_answer: string | null;
+    revealed: boolean;
+  } | null;
+}
+
+export interface OutboxItem {
+  client_id: string;
+  conversation_id: string;
+  sender_id: string;
+  kind: MessageKind;
+  body: string | null;
+  reply_to_id: string | null;
+  expires_at: string | null;
+  payload?: Record<string, unknown>;
+  status: 'pending' | 'sending' | 'failed';
+  attempts: number;
+  lastError?: string;
+  created_at: string;
 }

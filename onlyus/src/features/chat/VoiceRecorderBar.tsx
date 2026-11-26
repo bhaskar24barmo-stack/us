@@ -37,7 +37,10 @@ export default function VoiceRecorderBar({ onSend, onCancel }: VoiceRecorderBarP
           return;
         }
         streamRef.current = stream;
-        const rec = new MediaRecorder(stream);
+        const preferredMime = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find(
+          (m) => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(m)
+        );
+        const rec = preferredMime ? new MediaRecorder(stream, { mimeType: preferredMime }) : new MediaRecorder(stream);
         recorderRef.current = rec;
         chunksRef.current = [];
 

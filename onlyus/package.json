@@ -8,11 +8,27 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "build:android": "vite build && npx cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.4",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/core": "^6.2.4",
+    "@capacitor/device": "^6.0.3",
+    "@capacitor/filesystem": "^6.0.4",
+    "@capacitor/haptics": "^6.0.3",
+    "@capacitor/network": "^6.0.4",
+    "@capacitor/preferences": "^6.0.4",
+    "@capacitor/push-notifications": "^6.0.5",
+    "@capacitor/share": "^6.0.4",
+    "@capacitor/splash-screen": "^6.0.4",
+    "@capacitor/status-bar": "^6.0.3",
     "@supabase/supabase-js": "^2.45.0",
+    "@tanstack/react-virtual": "^3.14.28",
     "framer-motion": "^11.3.0",
+    "idb": "^8.0.4",
+    "livekit-client": "^2.25.0",
     "lucide-react": "^0.400.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -20,15 +36,22 @@
     "zustand": "^4.5.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.2.4",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
+    "eslint": "^10.15.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.8",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
     "typescript": "^5.5.3",
+    "typescript-eslint": "^8.74.0",
     "vite": "^5.3.4",
     "vite-plugin-pwa": "^0.20.0",
-    "@types/node": "^20.14.0"
+    "workbox-precaching": "^7.4.1"
   }
 }

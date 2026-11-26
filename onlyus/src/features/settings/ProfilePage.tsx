@@ -15,15 +15,18 @@ import {
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import AvatarBubble from '@/components/AvatarBubble';
 import TiltCard from '@/components/TiltCard';
 import { useAppStore } from '@/stores/useAppStore';
 import type { ChatThemeId, WallpaperId } from '@/types/models';
 
 const CHAT_THEMES: Array<{ id: ChatThemeId; label: string; colors: string }> = [
-  { id: 'midnight-rose', label: 'Midnight Rose', colors: 'from-[#ff4d8d] to-[#8b5cf6]' },
-  { id: 'electric-violet', label: 'Electric Violet', colors: 'from-violet-600 to-indigo-600' },
-  { id: 'aurora-velvet', label: 'Aurora Velvet', colors: 'from-fuchsia-600 to-purple-700' },
-  { id: 'sunset-blush', label: 'Sunset Blush', colors: 'from-rose-500 to-amber-500' },
+  { id: 'midnight-purple', label: 'Midnight Purple', colors: 'from-violet-600 to-indigo-700' },
+  { id: 'rose-pink', label: 'Rose Pink', colors: 'from-[#ff4d8d] to-[#8b5cf6]' },
+  { id: 'ocean-blue', label: 'Ocean Blue', colors: 'from-sky-500 to-indigo-600' },
+  { id: 'amoled-black', label: 'AMOLED Black', colors: 'from-zinc-800 to-zinc-950' },
+  { id: 'sunset', label: 'Sunset', colors: 'from-rose-500 to-amber-500' },
+  { id: 'lavender-dream', label: 'Lavender Dream', colors: 'from-purple-400 to-fuchsia-500' },
 ];
 
 const WALLPAPERS: Array<{ id: WallpaperId; label: string }> = [
@@ -36,14 +39,17 @@ const WALLPAPERS: Array<{ id: WallpaperId; label: string }> = [
 export default function ProfilePage({ onOpenNotifications }: { onOpenNotifications: () => void }) {
   const {
     currentUserRole,
+    pairCode,
     profiles,
     settings,
+    setPairCode,
     updateProfile,
     updateSettings,
     signInAsRole,
     signOutDemo,
     resetDemoData,
   } = useAppStore();
+  const [codeDraft, setCodeDraft] = useState(pairCode);
 
   const role = currentUserRole ?? 'me';
   const me = profiles[role];
@@ -53,9 +59,38 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
   const [savedToast, setSavedToast] = useState(false);
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const minSide = Math.min(img.width, img.height);
+        const sx = (img.width - minSide) / 2;
+        const sy = (img.height - minSide) / 2;
+        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.86);
+        updateProfile(role, { avatar_path: dataUrl });
+        setSavedToast(true);
+        setTimeout(() => setSavedToast(false), 1800);
+      };
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
 
   function exportBackup() {
-    const raw = localStorage.getItem('onlyus.prototype.v1') || '{}';
+    const raw = localStorage.getItem('onlyus.v4') || '{}';
     const blob = new Blob([raw], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -75,7 +110,7 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
       try {
         const text = String(reader.result || '');
         JSON.parse(text);
-        localStorage.setItem('onlyus.prototype.v1', text);
+        localStorage.setItem('onlyus.v4', text);
         window.location.reload();
       } catch {
         setBackupMsg('Invalid backup JSON');
@@ -113,20 +148,73 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
           onClick={switchRole}
           className="px-3 py-1.5 rounded-full glass text-xs flex items-center gap-1.5 text-rose-soft shrink-0 whitespace-nowrap"
         >
-          <ArrowLeftRight className="h-3.5 w-3.5" /> Switch to {role === 'me' ? 'Girlfriend' : 'Me'}
+          <ArrowLeftRight className="h-3.5 w-3.5" /> Switch to {role === 'me' ? 'Purvika' : 'Bhaskar'}
         </button>
+      </div>
+
+      {/* Two-Person Friend Link & Live Presence */}
+      <div className="glass rounded-3xl p-4 space-y-2.5 border border-white/15">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-semibold uppercase tracking-wider text-rose-soft">
+            Private Friends (2 / 2)
+          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+            Open-Source Presence
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {(['me', 'partner'] as const).map((r) => {
+            const p = profiles[r];
+            return (
+              <div key={r} className="rounded-2xl bg-white/5 border border-white/10 p-2.5 flex items-center gap-2.5">
+                <AvatarBubble profile={p} size="sm" showOnline />
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold truncate">{p.display_name}</div>
+                  <div className="text-[10px] text-white/55 truncate">
+                    {p.online ? 'online' : 'offline'}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            value={codeDraft}
+            onChange={(e) => setCodeDraft(e.target.value.toUpperCase())}
+            placeholder="ONLYUS-XXXXXX"
+            className="flex-1 rounded-xl bg-white/5 border border-white/15 px-3 py-1.5 text-xs font-mono text-rose-soft outline-none focus:border-rose-glow min-w-0"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setPairCode(codeDraft);
+              setBackupMsg('Pair code linked ✓');
+              setTimeout(() => setBackupMsg(null), 2000);
+            }}
+            className="text-[11px] px-3 py-1.5 rounded-xl bg-love-gradient text-white font-semibold shrink-0"
+          >
+            Connect
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void navigator.clipboard?.writeText(pairCode);
+              setBackupMsg('Code copied ✓');
+              setTimeout(() => setBackupMsg(null), 2000);
+            }}
+            className="text-[11px] px-2.5 py-1.5 rounded-xl glass text-white/80 shrink-0"
+          >
+            Copy
+          </button>
+        </div>
       </div>
 
       {/* Profile Card */}
       <TiltCard>
         <form onSubmit={saveProfile} className="glass rounded-3xl p-5 space-y-3.5">
         <div className="flex items-center gap-4">
-          <div
-            className="h-16 w-16 rounded-2xl flex items-center justify-center text-3xl shadow-glow-pink shrink-0"
-            style={{ background: `linear-gradient(135deg, ${me.accent_color}, #8b5cf6)` }}
-          >
-            {me.avatar_emoji}
-          </div>
+          <AvatarBubble profile={me} size="lg" showOnline />
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-lg truncate">{me.display_name}</div>
             <div className="flex items-center gap-2 text-xs text-white/60">
@@ -138,6 +226,31 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
               >
                 {me.online ? 'Online' : 'Appear Away'}
               </button>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/15 text-[11px] font-medium text-white"
+              >
+                Change Photo
+              </button>
+              {me.avatar_path && (
+                <button
+                  type="button"
+                  onClick={() => updateProfile(role, { avatar_path: undefined })}
+                  className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 text-[11px] text-white/60"
+                >
+                  Remove
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -264,7 +377,7 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
           className="w-full py-2.5 rounded-2xl glass flex items-center justify-between px-3.5"
         >
           <span className="flex items-center gap-2">
-            <Lock className="h-4 w-4 text-emerald-400" /> App Lock &amp; PIN (Local Demo)
+            <Lock className="h-4 w-4 text-emerald-400" /> App Lock &amp; PIN
           </span>
           <span className="text-white/50">Manage →</span>
         </Link>
@@ -300,13 +413,13 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
             onClick={resetDemoData}
             className="flex-1 py-2.5 rounded-2xl glass text-white/80 flex items-center justify-center gap-1.5"
           >
-            <RotateCcw className="h-3.5 w-3.5" /> Reset Demo Data
+            <RotateCcw className="h-3.5 w-3.5" /> Clear Local Cache
           </button>
           <button
             onClick={signOutDemo}
             className="flex-1 py-2.5 rounded-2xl bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center justify-center gap-1.5"
           >
-            <LogOut className="h-3.5 w-3.5" /> Switch Login
+            <LogOut className="h-3.5 w-3.5" /> Sign Out
           </button>
         </div>
       </div>

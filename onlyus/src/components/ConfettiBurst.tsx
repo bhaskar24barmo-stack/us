@@ -16,9 +16,12 @@ export default function ConfettiBurst() {
 
   useEffect(() => {
     if (trigger === 0) return;
-    setVisible(true);
-    const t = setTimeout(() => setVisible(false), 2000);
-    return () => clearTimeout(t);
+    const t0 = setTimeout(() => setVisible(true), 0);
+    const t1 = setTimeout(() => setVisible(false), 2000);
+    return () => {
+      clearTimeout(t0);
+      clearTimeout(t1);
+    };
   }, [trigger]);
 
   return (

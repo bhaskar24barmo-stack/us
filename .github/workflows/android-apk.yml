@@ -1,0 +1,82 @@
+name: Android Signed APK Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: onlyus
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: onlyus/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies and build web bundle
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Decode google-services.json and keystore
+        run: |
+          if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" ]; then
+            echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
+          fi
+          echo "${{ secrets.ONLYUS_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+
+      - name: Build Signed Release APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+        env:
+          ONLYUS_KEYSTORE_PATH: release.keystore
+          ONLYUS_KEYSTORE_PASSWORD: ${{ secrets.ONLYUS_KEYSTORE_PASSWORD }}
+          ONLYUS_KEY_ALIAS: ${{ secrets.ONLYUS_KEY_ALIAS }}
+          ONLYUS_KEY_PASSWORD: ${{ secrets.ONLYUS_KEY_PASSWORD }}
+
+      - name: Package APK & SHA-256 checksum
+        run: |
+          mkdir -p dist-apk
+          TAG=${GITHUB_REF_NAME}
+          cp android/app/build/outputs/apk/release/app-release.apk "dist-apk/ONLYUS-${TAG}.apk"
+          sha256sum "dist-apk/ONLYUS-${TAG}.apk" > "dist-apk/ONLYUS-${TAG}.apk.sha256"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: onlyus-android-apk
+          path: onlyus/dist-apk/*
+
+      - name: Attach APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            onlyus/dist-apk/ONLYUS-*.apk
+            onlyus/dist-apk/ONLYUS-*.apk.sha256
