@@ -7,7 +7,6 @@ import {
   BookmarkPlus,
   Camera,
   Check,
-  CheckCheck,
   Copy,
   Edit3,
   EyeOff,
@@ -34,7 +33,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { STICKER_CATALOG } from '@/data/demoData';
+import { CONVERSATION_ID, STICKER_CATALOG } from '@/data/demoData';
+import { uploadPrivateMedia } from '@/services/mediaStorage';
 import AvatarBubble from '@/components/AvatarBubble';
 import LoveStormOverlay from '@/components/LoveStormOverlay';
 import SnapPeekingAvatar from '@/components/SnapPeekingAvatar';
@@ -47,6 +47,7 @@ import { ANIMATED_GIF_CATALOG } from '@/services/gifs';
 import { flushOutbox, enqueueOutbox } from '@/features/chat/outbox';
 import { sendOutboxMessageToSupabase } from '@/services/chatSync';
 import { formatWhatsAppLastSeen, OpenPresenceClient } from '@/services/presence';
+import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/stores/useAppStore';
 import type { Message } from '@/types/models';
 
@@ -79,11 +80,11 @@ function formatTime(iso: string) {
 function formatDayLabel(iso: string) {
   const d = new Date(iso);
   const today = new Date();
-  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === today.toDateString()) return 'TODAY';
   const yest = new Date(today);
   yest.setDate(today.getDate() - 1);
-  if (d.toDateString() === yest.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  if (d.toDateString() === yest.toDateString()) return 'YESTERDAY';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }).toUpperCase();
 }
 
 export default function ChatPage({ onOpenNotifications }: { onOpenNotifications: () => void }) {
@@ -114,6 +115,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     updateProfile,
     openMediaViewer,
     startCall,
+    syncRemoteMessages,
     world,
   } = useAppStore();
 
@@ -137,6 +139,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
   const [floatingHeartKey, setFloatingHeartKey] = useState(0);
   const [stormKey, setStormKey] = useState(0);
   const [pendingAttachment, setPendingAttachment] = useState<{
+    file: File;
     url: string;
     type: 'image' | 'video';
     name: string;
@@ -162,13 +165,40 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
   const unreadNotifs = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
+    void syncRemoteMessages();
     const handleOnline = () => {
+      void syncRemoteMessages();
       void flushOutbox(sendOutboxMessageToSupabase);
     };
     window.addEventListener('online', handleOnline);
     void flushOutbox(sendOutboxMessageToSupabase);
-    return () => window.removeEventListener('online', handleOnline);
-  }, []);
+
+    const ch = supabase
+      ? supabase
+          .channel(`direct-msg-${CONVERSATION_ID}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'messages',
+              filter: `conversation_id=eq.${CONVERSATION_ID}`,
+            },
+            (payload) => {
+              const row = payload.new as Record<string, unknown>;
+              if (row && row.sender_id !== me.id) {
+                void syncRemoteMessages();
+              }
+            }
+          )
+          .subscribe()
+      : null;
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      if (ch) void ch.unsubscribe();
+    };
+  }, [me.id, syncRemoteMessages]);
 
   useEffect(() => {
     if (settings.readReceipts) markAllRead();
@@ -243,23 +273,71 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     const trimmed = text.trim().slice(0, 4000);
 
     if (pendingAttachment) {
+      const attach = pendingAttachment;
+      const mediaId = `med-${Date.now()}`;
+      const clientId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `cli-${Date.now()}`;
+
+      // Optimistic instant local display
       sendMessage({
-        kind: pendingAttachment.type,
+        kind: attach.type,
         body: trimmed || null,
         media: {
-          id: `med-${Date.now()}`,
-          type: pendingAttachment.type,
-          url: pendingAttachment.url,
-          caption: trimmed || pendingAttachment.name,
+          id: mediaId,
+          type: attach.type,
+          url: attach.url,
+          caption: trimmed || attach.name,
           isObjectUrl: true,
         },
         reply_to_id: replyTo?.id ?? null,
         ttlSec,
       });
+
       setPendingAttachment(null);
       setText('');
       setReplyTo(null);
       setPickerOpen(false);
+
+      // Asynchronous background upload to Supabase Storage & Database
+      void (async () => {
+        try {
+          const res = await uploadPrivateMedia({
+            conversationId: CONVERSATION_ID,
+            ownerId: me.id,
+            file: attach.file,
+          });
+
+          const permanentUrl = 'signedUrl' in res ? res.signedUrl : attach.url;
+
+          await enqueueOutbox({
+            client_id: clientId,
+            conversation_id: CONVERSATION_ID,
+            sender_id: me.id,
+            kind: attach.type,
+            body: trimmed || null,
+            reply_to_id: replyTo?.id ?? null,
+            expires_at: ttlSec ? new Date(Date.now() + ttlSec * 1000).toISOString() : null,
+            payload: {
+              media: {
+                id: mediaId,
+                type: attach.type,
+                url: permanentUrl,
+                caption: trimmed || attach.name,
+              },
+              is_snap: true,
+            },
+            status: 'pending',
+            attempts: 0,
+            created_at: new Date().toISOString(),
+          });
+          await flushOutbox(sendOutboxMessageToSupabase);
+        } catch (err) {
+          console.warn('Media upload to Supabase error:', err);
+        }
+      })();
+
       return;
     }
 
@@ -285,7 +363,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     });
     void enqueueOutbox({
       client_id: clientId,
-      conversation_id: 'onlyus-private-thread',
+      conversation_id: CONVERSATION_ID,
       sender_id: me.id,
       kind,
       body: trimmed,
@@ -307,7 +385,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     if (pendingAttachment) URL.revokeObjectURL(pendingAttachment.url);
     const url = URL.createObjectURL(file);
     const isVideo = file.type.startsWith('video/');
-    setPendingAttachment({ url, type: isVideo ? 'video' : 'image', name: file.name });
+    setPendingAttachment({ file, url, type: isVideo ? 'video' : 'image', name: file.name });
     e.target.value = '';
   }
 
@@ -332,7 +410,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
       : 'from-[#ff4d8d] to-[#8b5cf6]';
 
   return (
-    <div className="flex flex-col h-full pb-24 relative">
+    <div className="flex flex-col h-full pb-[4.85rem] relative select-none bg-gradient-to-b from-[#0d0718] via-[#090412] to-[#05020a]">
       {/* Header */}
       <header className="glass-strong sticky top-0 z-20 px-4 py-3 flex items-center justify-between gap-2 border-b border-white/10">
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -775,20 +853,32 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                         </p>
                       )}
 
-                      <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-white/65">
+                      <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-white/65">
                         {remainingSec !== null && (
                           <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 font-mono text-[9px]">
                             ⏳ {remainingSec}s
                           </span>
                         )}
+                        {msg.saved_in_chat && (
+                          <span className="text-[9px] text-rose-soft font-semibold flex items-center gap-0.5">
+                            <BookmarkCheck className="h-3 w-3" /> Saved
+                          </span>
+                        )}
                         {msg.edited_at && <span>edited</span>}
                         <span>{formatTime(msg.created_at)}</span>
-                        {isMe &&
-                          (msg.read_at ? (
-                            <CheckCheck className="h-3 w-3 text-sky-300" />
-                          ) : (
-                            <Check className="h-3 w-3" />
-                          ))}
+                        {isMe && (
+                          <span className="flex items-center gap-0.5 font-semibold text-[10px] text-sky-300">
+                            {msg.read_at ? (
+                              <>
+                                <span className="inline-block text-[11px] leading-none">▷</span> Opened
+                              </>
+                            ) : (
+                              <>
+                                <span className="inline-block text-[11px] leading-none">▶</span> Delivered
+                              </>
+                            )}
+                          </span>
+                        )}
                       </div>
                     </>
                   )}

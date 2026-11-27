@@ -2,6 +2,9 @@ import { supabase } from '@/lib/supabase';
 import type { Message, MessageKind, OutboxItem } from '@/types/models';
 
 function mapRowToMessage(row: Record<string, unknown>): Message {
+  const payload = (row.payload as Record<string, unknown>) || {};
+  const media = (payload.media as Message['media']) || null;
+
   return {
     id: String(row.id),
     conversation_id: String(row.conversation_id),
@@ -9,6 +12,17 @@ function mapRowToMessage(row: Record<string, unknown>): Message {
     client_id: String(row.client_id),
     kind: (row.kind as MessageKind) ?? 'text',
     body: (row.body as string | null) ?? null,
+    media,
+    sticker_id: (payload.sticker_id as string) || null,
+    gif_id: (payload.gif_id as string) || null,
+    gif_url: (payload.gif_url as string) || null,
+    gif_title: (payload.gif_title as string) || null,
+    poll: (payload.poll as Message['poll']) || null,
+    song: (payload.song as Message['song']) || null,
+    saved_in_chat: Boolean(payload.saved_in_chat),
+    is_snap: Boolean(payload.is_snap),
+    snap_viewed: Boolean(payload.snap_viewed),
+    revealed: Boolean(payload.revealed),
     reply_to_id: (row.reply_to_id as string | null) ?? null,
     reactions: [],
     edited_at: (row.edited_at as string | null) ?? null,
@@ -60,6 +74,7 @@ export async function sendOutboxMessageToSupabase(
       body: item.body,
       reply_to_id: item.reply_to_id,
       expires_at: item.expires_at,
+      payload: item.payload || {},
     },
     { onConflict: 'sender_id,client_id', ignoreDuplicates: true }
   );

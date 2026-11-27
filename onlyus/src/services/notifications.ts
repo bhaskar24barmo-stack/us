@@ -1,4 +1,5 @@
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 let sharedNotifCtx: AudioContext | null = null;
 
@@ -98,10 +99,64 @@ export async function triggerHeartbeatHaptic() {
   }
 }
 
+export async function initNotificationChannel(): Promise<void> {
+  try {
+    await LocalNotifications.createChannel({
+      id: 'onlyus-alerts',
+      name: 'ONLYUS Romantic Alerts',
+      description: 'Private snaps and messages from your love',
+      importance: 5, // High importance: heads-up notification
+      visibility: 1, // Visible on lockscreen
+      sound: 'default',
+      vibration: true,
+      lights: true,
+      lightColor: '#ff4d8d',
+    });
+  } catch {
+    // Non-native fallback
+  }
+}
+
 export async function requestBrowserNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
+  try {
+    const status = await LocalNotifications.requestPermissions();
+    if (status.display === 'granted') {
+      await initNotificationChannel();
+      return 'granted';
+    }
+  } catch {
+    // Fallback to web Notification API
+  }
   if (!('Notification' in window)) return 'unsupported';
   if (Notification.permission === 'granted') return 'granted';
   return await Notification.requestPermission();
+}
+
+export async function triggerDeviceNotification(title: string, body: string, id?: number) {
+  try {
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== 'granted') {
+      await LocalNotifications.requestPermissions();
+    }
+    await initNotificationChannel();
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          title,
+          body,
+          id: id ?? Math.floor((Date.now() % 100000) + Math.random() * 1000),
+          channelId: 'onlyus-alerts',
+          sound: 'default',
+          smallIcon: 'ic_launcher_round',
+          iconColor: '#ff4d8d',
+          actionTypeId: '',
+          extra: null,
+        },
+      ],
+    });
+  } catch {
+    triggerBrowserNotification(title, body);
+  }
 }
 
 export function triggerBrowserNotification(title: string, body: string) {

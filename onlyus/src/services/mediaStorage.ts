@@ -88,15 +88,33 @@ export async function uploadPrivateMedia(params: {
   }
 
   params.onProgress?.(85);
-  const signedUrl = await getSignedMediaUrl(storagePath);
-  if (!signedUrl) {
-    return { error: 'Could not generate signed media URL.' };
+  // Get permanent public URL for instant, reliable loading across devices
+  const { data: pubData } = supabase.storage.from('private-media').getPublicUrl(storagePath);
+  const mediaUrl = pubData?.publicUrl || (await getSignedMediaUrl(storagePath)) || '';
+
+  if (!mediaUrl) {
+    return { error: 'Could not generate media URL.' };
+  }
+
+  // Also record in media_attachments table in Supabase
+  try {
+    await supabase.from('media_attachments').insert({
+      conversation_id: params.conversationId,
+      owner_id: params.ownerId,
+      bucket: 'private-media',
+      storage_path: storagePath,
+      mime_type: check.mimeType,
+      size_bytes: check.sizeBytes,
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('Could not insert media_attachment row:', err);
   }
 
   params.onProgress?.(100);
   return {
     storagePath,
-    signedUrl,
+    signedUrl: mediaUrl,
     mimeType: check.mimeType,
     sizeBytes: check.sizeBytes,
   };

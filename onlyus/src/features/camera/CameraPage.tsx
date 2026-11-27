@@ -18,6 +18,10 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CONVERSATION_ID } from '@/data/demoData';
+import { uploadPrivateMedia } from '@/services/mediaStorage';
+import { enqueueOutbox, flushOutbox } from '@/features/chat/outbox';
+import { sendOutboxMessageToSupabase } from '@/services/chatSync';
 import { useAppStore } from '@/stores/useAppStore';
 
 const FILTERS = [
@@ -31,7 +35,9 @@ const FILTERS = [
 
 export default function CameraPage() {
   const navigate = useNavigate();
-  const { sendMessage, addMemory } = useAppStore();
+  const { sendMessage, addMemory, currentUserRole, profiles } = useAppStore();
+  const role = currentUserRole ?? 'me';
+  const me = profiles[role];
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -287,6 +293,45 @@ export default function CameraPage() {
           if (blob) {
             finalUrl = URL.createObjectURL(blob);
             finalIsObject = true;
+
+            // Upload snap to Supabase Storage & Database
+            const clientId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cli-${Date.now()}`;
+            const mediaId = `snap-${Date.now()}`;
+            void (async () => {
+              try {
+                const res = await uploadPrivateMedia({
+                  conversationId: CONVERSATION_ID,
+                  ownerId: me.id,
+                  file: blob,
+                });
+                const permanentUrl = 'signedUrl' in res ? res.signedUrl : finalUrl;
+                await enqueueOutbox({
+                  client_id: clientId,
+                  conversation_id: CONVERSATION_ID,
+                  sender_id: me.id,
+                  kind: 'image',
+                  body: caption.trim() || null,
+                  reply_to_id: null,
+                  expires_at: null,
+                  payload: {
+                    media: {
+                      id: mediaId,
+                      type: 'image',
+                      url: permanentUrl,
+                      caption: caption.trim() || undefined,
+                      filter: FILTERS[filterIdx].name,
+                    },
+                    is_snap: true,
+                  },
+                  status: 'pending',
+                  attempts: 0,
+                  created_at: new Date().toISOString(),
+                });
+                await flushOutbox(sendOutboxMessageToSupabase);
+              } catch (err) {
+                console.warn('Camera snap upload failed:', err);
+              }
+            })();
           }
         }
       } catch {

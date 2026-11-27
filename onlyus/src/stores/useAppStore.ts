@@ -8,7 +8,13 @@ import {
   DEMO_PROFILES,
 } from '@/data/demoData';
 import { playMicroSound } from '@/services/haptics';
-import { playSoftChime, triggerBrowserNotification } from '@/services/notifications';
+import {
+  playSoftChime,
+  triggerBrowserNotification,
+  triggerDeviceNotification,
+  triggerHeartbeatHaptic,
+} from '@/services/notifications';
+import { fetchConversationMessages } from '@/services/chatSync';
 import type {
   AppNotification,
   AppSettings,
@@ -141,6 +147,7 @@ interface AppStore extends PersistedSlice {
   setPairCode: (code: string) => void;
   updateProfile: (role: UserRole, patch: Partial<Profile>) => void;
   receiveLiveMessage: (msg: Message) => void;
+  syncRemoteMessages: () => Promise<void>;
 
   // Chat
   sendMessage: (payload: {
@@ -280,9 +287,13 @@ export const useAppStore = create<AppStore>((set, get) => {
     },
 
     receiveLiveMessage(msg) {
-      const exists = get().messages.some((m) => m.id === msg.id);
+      const exists = get().messages.some(
+        (m) => m.id === msg.id || (m.client_id && msg.client_id && m.client_id === msg.client_id)
+      );
       if (exists) return;
-      const messages = [...get().messages, msg];
+      const messages = [...get().messages, msg].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
       set({ messages });
       sync({ messages });
       const role = get().currentUserRole ?? 'me';
@@ -294,8 +305,43 @@ export const useAppStore = create<AppStore>((set, get) => {
           ? 'Sent a sticker ✨'
           : msg.kind === 'whisper'
           ? 'Sent a Secret Whisper 🤫'
-          : msg.body || 'Sent a message';
+          : msg.kind === 'image'
+          ? 'Sent a Snap 📸'
+          : msg.kind === 'video'
+          ? 'Sent a Video Snap 🎥'
+          : msg.kind === 'voice'
+          ? 'Sent a Voice Note 🎙️'
+          : msg.body || 'Sent a sweet note';
+
+      // Trigger native phone notification on Android
+      triggerDeviceNotification(`${partner.display_name} 💖`, preview);
+      triggerHeartbeatHaptic();
+      playSoftChime(msg.kind === 'whisper' ? 'whisper' : 'receive');
+
       get().pushNotification('message', partner.display_name, preview, '/chats');
+    },
+
+    async syncRemoteMessages() {
+      try {
+        const remote = await fetchConversationMessages(CONVERSATION_ID, 80);
+        if (remote && remote.length > 0) {
+          const local = get().messages;
+          const mergedMap = new Map<string, Message>();
+          local.forEach((m) => mergedMap.set(m.client_id || m.id, m));
+          remote.forEach((m) => {
+            const key = m.client_id || m.id;
+            const existing = mergedMap.get(key);
+            mergedMap.set(key, { ...existing, ...m });
+          });
+          const merged = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          set({ messages: merged });
+          sync({ messages: merged });
+        }
+      } catch (err) {
+        console.warn('Failed to sync remote messages:', err);
+      }
     },
 
     updateProfile(role, patch) {

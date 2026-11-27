@@ -13,7 +13,7 @@ import LockGate from '@/features/lock/LockGate';
 import MediaViewerModal from '@/features/media/MediaViewerModal';
 import NotificationCenter, { ToastStack } from '@/features/notifications/NotificationCenter';
 import { subscribeCallSignals } from '@/services/callSignaling';
-import { playSoftChime } from '@/services/notifications';
+import { initNotificationChannel, playSoftChime } from '@/services/notifications';
 import { useAppStore } from '@/stores/useAppStore';
 
 const ActiveCallOverlay = lazy(() => import('@/features/calls/ActiveCallOverlay'));
@@ -82,7 +82,10 @@ export default function App() {
   const { currentUserRole, onboarded, pairCode, settings } = useAppStore();
   const [notifOpen, setNotifOpen] = useState(false);
 
-  useEffect(() => useAuth.getState().init(), []);
+  useEffect(() => {
+    useAuth.getState().init();
+    void initNotificationChannel();
+  }, []);
 
   useEffect(() => {
     if (!currentUserRole || !onboarded) return;
