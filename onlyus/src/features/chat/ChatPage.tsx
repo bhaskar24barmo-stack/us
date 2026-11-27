@@ -1375,12 +1375,49 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
 
         {recordingVoice ? (
           <VoiceRecorderBar
-            onSend={(url, durationSec) => {
+            onSend={(url, durationSec, blob) => {
+              setRecordingVoice(false);
+              const vocId = `voc-${Date.now()}`;
               sendMessage({
                 kind: 'voice',
-                media: { id: `voc-${Date.now()}`, type: 'voice', url, durationSec, isObjectUrl: true },
+                media: { id: vocId, type: 'voice', url, durationSec, isObjectUrl: true },
               });
-              setRecordingVoice(false);
+
+              if (blob) {
+                void (async () => {
+                  try {
+                    const res = await uploadPrivateMedia({
+                      conversationId: CONVERSATION_ID,
+                      ownerId: me.id,
+                      file: blob,
+                    });
+                    const cloudUrl = 'signedUrl' in res ? res.signedUrl : url;
+                    await enqueueOutbox({
+                      client_id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cli-${Date.now()}`,
+                      conversation_id: CONVERSATION_ID,
+                      sender_id: me.id,
+                      kind: 'voice',
+                      body: null,
+                      reply_to_id: replyTo?.id ?? null,
+                      expires_at: null,
+                      payload: {
+                        media: {
+                          id: vocId,
+                          type: 'voice',
+                          url: cloudUrl,
+                          durationSec,
+                        },
+                      },
+                      status: 'pending',
+                      attempts: 0,
+                      created_at: new Date().toISOString(),
+                    });
+                    await flushOutbox(sendOutboxMessageToSupabase);
+                  } catch (err) {
+                    console.warn('Voice note cloud sync failed:', err);
+                  }
+                })();
+              }
             }}
             onCancel={() => setRecordingVoice(false)}
           />

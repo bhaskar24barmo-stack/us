@@ -337,6 +337,46 @@ export default function CameraPage() {
       } catch {
         // Fallback to original preview URL
       }
+    } else if (preview.type === 'video') {
+      const clientId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cli-${Date.now()}`;
+      const mediaId = `snap-vid-${Date.now()}`;
+      void (async () => {
+        try {
+          const resp = await fetch(preview.url);
+          const blob = await resp.blob();
+          const res = await uploadPrivateMedia({
+            conversationId: CONVERSATION_ID,
+            ownerId: me.id,
+            file: blob,
+          });
+          const permanentUrl = 'signedUrl' in res ? res.signedUrl : preview.url;
+          await enqueueOutbox({
+            client_id: clientId,
+            conversation_id: CONVERSATION_ID,
+            sender_id: me.id,
+            kind: 'video',
+            body: caption.trim() || null,
+            reply_to_id: null,
+            expires_at: null,
+            payload: {
+              media: {
+                id: mediaId,
+                type: 'video',
+                url: permanentUrl,
+                caption: caption.trim() || undefined,
+                filter: FILTERS[filterIdx].name,
+              },
+              is_snap: true,
+            },
+            status: 'pending',
+            attempts: 0,
+            created_at: new Date().toISOString(),
+          });
+          await flushOutbox(sendOutboxMessageToSupabase);
+        } catch (err) {
+          console.warn('Video snap upload failed:', err);
+        }
+      })();
     }
 
     sendMessage({

@@ -3,7 +3,7 @@ import { Mic, Pause, Play, Send, Square, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface VoiceRecorderBarProps {
-  onSend: (url: string, durationSec: number) => void;
+  onSend: (url: string, durationSec: number, blob?: Blob) => void;
   onCancel: () => void;
 }
 
@@ -12,6 +12,7 @@ export default function VoiceRecorderBar({ onSend, onCancel }: VoiceRecorderBarP
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<1 | 1.5 | 2>(1);
 
@@ -49,6 +50,7 @@ export default function VoiceRecorderBar({ onSend, onCancel }: VoiceRecorderBarP
         };
         rec.onstop = () => {
           const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
+          setRecordedBlob(blob);
           const url = URL.createObjectURL(blob);
           setAudioUrl(url);
           setStatus('preview');
@@ -185,7 +187,7 @@ export default function VoiceRecorderBar({ onSend, onCancel }: VoiceRecorderBarP
           </button>
           <button
             type="button"
-            onClick={() => audioUrl && onSend(audioUrl, Math.max(1, seconds))}
+            onClick={() => audioUrl && onSend(audioUrl, Math.max(1, seconds), recordedBlob || undefined)}
             aria-label="Send voice note"
             className="h-9 w-9 rounded-full bg-love-gradient text-white flex items-center justify-center shadow-glow-pink"
           >

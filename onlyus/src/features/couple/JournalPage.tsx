@@ -1,6 +1,8 @@
 import { ArrowLeft, EyeOff, Globe, Heart, Moon, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CONVERSATION_ID } from '@/data/demoData';
+import { supabase } from '@/lib/supabase';
 import { playSoftChime, triggerHeartbeatHaptic } from '@/services/notifications';
 import { useAppStore } from '@/stores/useAppStore';
 
@@ -16,7 +18,7 @@ interface LocalJournalEntry {
 
 const STORAGE = 'onlyus.journal.v1';
 
-function loadJournal(): LocalJournalEntry[] {
+function loadCachedJournal(): LocalJournalEntry[] {
   try {
     return JSON.parse(localStorage.getItem(STORAGE) || '[]') as LocalJournalEntry[];
   } catch {
@@ -30,37 +32,115 @@ export default function JournalPage() {
   const me = profiles[currentUserRole ?? 'me'];
   const partner = profiles[currentUserRole === 'me' ? 'partner' : 'me'];
 
-  const [entries, setEntries] = useState<LocalJournalEntry[]>(() => loadJournal());
+  const [entries, setEntries] = useState<LocalJournalEntry[]>(() => loadCachedJournal());
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [visibility, setVisibility] = useState<'shared' | 'private' | 'midnight'>('shared');
 
-  function save(next: LocalJournalEntry[]) {
-    setEntries(next);
-    localStorage.setItem(STORAGE, JSON.stringify(next));
-  }
+  useEffect(() => {
+    let mounted = true;
+    if (!supabase) return;
 
-  function addEntry(e: React.FormEvent) {
+    async function fetchRemote() {
+      if (!supabase) return;
+      try {
+        const { data, error } = await supabase
+          .from('journal_entries')
+          .select('*')
+          .eq('conversation_id', CONVERSATION_ID)
+          .order('created_at', { ascending: false });
+
+        if (!error && data && mounted) {
+          const mapped: LocalJournalEntry[] = data.map((d: { id: string; title: string; body: string; visibility: string; author_id: string; created_at: string }) => ({
+            id: d.id,
+            title: d.title,
+            body: d.body,
+            visibility: (d.visibility as 'shared' | 'private' | 'midnight') || 'shared',
+            authorId: d.author_id,
+            authorName: d.author_id === me.id ? me.display_name : partner.display_name,
+            date: new Date(d.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+          }));
+          setEntries(mapped);
+          localStorage.setItem(STORAGE, JSON.stringify(mapped));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch remote journal entries:', err);
+      }
+    }
+
+    void fetchRemote();
+
+    const channel = supabase
+      .channel(`realtime-journal-${CONVERSATION_ID}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'journal_entries', filter: `conversation_id=eq.${CONVERSATION_ID}` },
+        () => {
+          void fetchRemote();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      if (supabase) void supabase.removeChannel(channel);
+    };
+  }, [me.id, me.display_name, partner.display_name]);
+
+  async function addEntry(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
 
     playSoftChime('harp');
     triggerHeartbeatHaptic();
 
-    save([
-      {
-        id: `j-${Date.now()}`,
-        title: title.trim(),
-        body: body.trim(),
-        visibility,
-        authorId: me.id,
-        authorName: me.display_name,
-        date: new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
-      },
-      ...entries,
-    ]);
+    const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `j-${Date.now()}`;
+    const newEntry: LocalJournalEntry = {
+      id: newId,
+      title: title.trim(),
+      body: body.trim(),
+      visibility,
+      authorId: me.id,
+      authorName: me.display_name,
+      date: new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+    };
+
+    const next = [newEntry, ...entries];
+    setEntries(next);
+    localStorage.setItem(STORAGE, JSON.stringify(next));
+
     setTitle('');
     setBody('');
+
+    if (supabase) {
+      try {
+        await supabase.from('journal_entries').insert({
+          id: newId,
+          conversation_id: CONVERSATION_ID,
+          author_id: me.id,
+          title: newEntry.title,
+          body: newEntry.body,
+          visibility: newEntry.visibility,
+          entry_date: new Date().toISOString().slice(0, 10),
+        });
+      } catch (err) {
+        console.warn('Failed to insert journal entry into Supabase:', err);
+      }
+    }
+  }
+
+  async function deleteEntry(id: string) {
+    const next = entries.filter((x) => x.id !== id);
+    setEntries(next);
+    localStorage.setItem(STORAGE, JSON.stringify(next));
+
+    if (supabase) {
+      try {
+        await supabase.from('journal_entries').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Failed to delete journal entry from Supabase:', err);
+      }
+    }
   }
 
   const visibleEntries = entries.filter(
@@ -189,7 +269,7 @@ export default function JournalPage() {
                   {entry.authorId === me.id && (
                     <button
                       type="button"
-                      onClick={() => save(entries.filter((x) => x.id !== entry.id))}
+                      onClick={() => deleteEntry(entry.id)}
                       aria-label="Delete entry"
                       className="text-white/40 hover:text-rose-300"
                     >

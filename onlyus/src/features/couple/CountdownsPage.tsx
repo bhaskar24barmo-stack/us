@@ -1,6 +1,9 @@
 import { ArrowLeft, Plus, Timer, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CONVERSATION_ID } from '@/data/demoData';
+import { supabase } from '@/lib/supabase';
+import { playSoftChime, triggerHeartbeatHaptic } from '@/services/notifications';
 import { useAppStore } from '@/stores/useAppStore';
 
 interface LocalCountdown {
@@ -13,7 +16,7 @@ interface LocalCountdown {
 
 const STORAGE = 'onlyus.countdowns.v1';
 
-function loadCountdowns(): LocalCountdown[] {
+function loadCachedCountdowns(): LocalCountdown[] {
   try {
     return JSON.parse(localStorage.getItem(STORAGE) || '[]') as LocalCountdown[];
   } catch {
@@ -23,33 +26,118 @@ function loadCountdowns(): LocalCountdown[] {
 
 export default function CountdownsPage() {
   const navigate = useNavigate();
-  const { world } = useAppStore();
-  const [items, setItems] = useState<LocalCountdown[]>(() => loadCountdowns());
+  const { currentUserRole, profiles, world } = useAppStore();
+  const role = currentUserRole ?? 'me';
+  const me = profiles[role];
+
+  const [items, setItems] = useState<LocalCountdown[]>(() => loadCachedCountdowns());
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [emoji, setEmoji] = useState('💖');
   const [nowMs] = useState(() => Date.now());
 
-  function save(next: LocalCountdown[]) {
-    setItems(next);
-    localStorage.setItem(STORAGE, JSON.stringify(next));
-  }
+  // Load from Supabase on mount and subscribe to realtime updates
+  useEffect(() => {
+    let mounted = true;
+    if (!supabase) return;
 
-  function addItem(e: React.FormEvent) {
+    async function fetchRemote() {
+      if (!supabase) return;
+      try {
+        const { data, error } = await supabase
+          .from('countdowns')
+          .select('*')
+          .eq('conversation_id', CONVERSATION_ID)
+          .order('target_at', { ascending: true });
+
+        if (!error && data && mounted) {
+          const mapped: LocalCountdown[] = data.map((d: { id: string; title: string; target_at: string; emoji: string; repeat_yearly: boolean }) => ({
+            id: d.id,
+            title: d.title,
+            targetAt: d.target_at.slice(0, 10),
+            emoji: d.emoji || '💖',
+            repeatYearly: d.repeat_yearly,
+          }));
+          setItems(mapped);
+          localStorage.setItem(STORAGE, JSON.stringify(mapped));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch remote countdowns:', err);
+      }
+    }
+
+    void fetchRemote();
+
+    const channel = supabase
+      .channel(`realtime-countdowns-${CONVERSATION_ID}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'countdowns', filter: `conversation_id=eq.${CONVERSATION_ID}` },
+        () => {
+          void fetchRemote();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      if (supabase) void supabase.removeChannel(channel);
+    };
+  }, []);
+
+  async function addItem(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !date) return;
-    save([
-      {
-        id: `cd-${Date.now()}`,
-        title: title.trim(),
-        targetAt: date,
-        emoji,
-        repeatYearly: true,
-      },
-      ...items,
-    ]);
+
+    playSoftChime('harp');
+    triggerHeartbeatHaptic();
+
+    const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cd-${Date.now()}`;
+    const newItem: LocalCountdown = {
+      id: newId,
+      title: title.trim(),
+      targetAt: date,
+      emoji: emoji.trim() || '💖',
+      repeatYearly: true,
+    };
+
+    const next = [newItem, ...items];
+    setItems(next);
+    localStorage.setItem(STORAGE, JSON.stringify(next));
+
     setTitle('');
     setDate('');
+
+    // Sync to Supabase
+    if (supabase) {
+      try {
+        await supabase.from('countdowns').insert({
+          id: newId,
+          conversation_id: CONVERSATION_ID,
+          title: newItem.title,
+          target_at: new Date(newItem.targetAt).toISOString(),
+          emoji: newItem.emoji,
+          repeat_yearly: true,
+          created_by: me.id,
+        });
+      } catch (err) {
+        console.warn('Failed to insert countdown into Supabase:', err);
+      }
+    }
+  }
+
+  async function deleteItem(id: string) {
+    const next = items.filter((x) => x.id !== id);
+    setItems(next);
+    localStorage.setItem(STORAGE, JSON.stringify(next));
+
+    if (supabase) {
+      try {
+        await supabase.from('countdowns').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Failed to delete countdown from Supabase:', err);
+      }
+    }
   }
 
   function daysLeft(target: string) {
@@ -135,7 +223,7 @@ export default function CountdownsPage() {
               </span>
               <button
                 type="button"
-                onClick={() => save(items.filter((x) => x.id !== item.id))}
+                onClick={() => deleteItem(item.id)}
                 aria-label="Delete countdown"
                 className="p-1.5 rounded-lg text-white/45 hover:text-rose-300"
               >

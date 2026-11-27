@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import {
+  Battery,
   BatteryCharging,
   Camera,
   CheckSquare,
@@ -19,8 +20,10 @@ import { useNavigate } from 'react-router-dom';
 import AvatarBubble from '@/components/AvatarBubble';
 import HeartbeatTouchModal from '@/components/HeartbeatTouchModal';
 import TiltCard from '@/components/TiltCard';
+import { CONVERSATION_ID } from '@/data/demoData';
 import { t } from '@/lib/i18n';
-import { getDeviceCareStatus, type PartnerCareStatus } from '@/services/deviceCare';
+import { supabase } from '@/lib/supabase';
+import { fetchPartnerBatteryStatus, publishMyBatteryStatus } from '@/services/deviceCare';
 import { playSoftChime, triggerHeartbeatHaptic } from '@/services/notifications';
 import { useAppStore } from '@/stores/useAppStore';
 
@@ -51,13 +54,99 @@ export default function HomePage() {
   const partner = profiles[role === 'me' ? 'partner' : 'me'];
   const [pingSent, setPingSent] = useState(false);
   const [touchModalOpen, setTouchModalOpen] = useState(false);
-  const [careStatus, setCareStatus] = useState<PartnerCareStatus | null>(null);
+  const [partnerCare, setPartnerCare] = useState<{ battery: number | null; charging: boolean; online: boolean }>({
+    battery: null,
+    charging: false,
+    online: false,
+  });
   const [answerDraft, setAnswerDraft] = useState(world.myAnswer || '');
   const [nowMs] = useState(() => Date.now());
 
+  // Publish own device battery & fetch partner real battery status from user_presence
   useEffect(() => {
-    void getDeviceCareStatus().then(setCareStatus);
-  }, []);
+    let mounted = true;
+
+    async function syncPresenceAndBattery() {
+      await publishMyBatteryStatus(me.id);
+      const care = await fetchPartnerBatteryStatus(partner.id);
+      if (mounted) setPartnerCare(care);
+    }
+
+    void syncPresenceAndBattery();
+    const interval = setInterval(() => void syncPresenceAndBattery(), 30000);
+
+    const presenceChan = supabase
+      ? supabase
+          .channel(`realtime-presence-home`)
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'user_presence', filter: `user_id=eq.${partner.id}` },
+            (payload) => {
+              if (payload.new && mounted) {
+                const row = payload.new as { battery_level: number | null; is_charging: boolean; is_online: boolean };
+                setPartnerCare({
+                  battery: row.battery_level ?? null,
+                  charging: Boolean(row.is_charging),
+                  online: Boolean(row.is_online),
+                });
+              }
+            }
+          )
+          .subscribe()
+      : null;
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+      if (supabase && presenceChan) void supabase.removeChannel(presenceChan);
+    };
+  }, [me.id, partner.id]);
+
+  // Sync Daily Answers with Supabase
+  useEffect(() => {
+    let mounted = true;
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    async function fetchDailyAnswers() {
+      if (!supabase) return;
+      try {
+        const { data } = await supabase
+          .from('daily_answers')
+          .select('*')
+          .eq('conversation_id', CONVERSATION_ID)
+          .eq('answer_date', todayStr);
+
+        if (data && mounted) {
+          const myRow = data.find((a: { user_id: string; answer: string }) => a.user_id === me.id);
+          const partnerRow = data.find((a: { user_id: string; answer: string }) => a.user_id === partner.id);
+          if (myRow) updateWorld({ myAnswer: myRow.answer });
+          if (partnerRow) updateWorld({ partnerAnswer: partnerRow.answer });
+        }
+      } catch (err) {
+        console.warn('Failed to fetch daily answers:', err);
+      }
+    }
+
+    void fetchDailyAnswers();
+
+    const answersChan = supabase
+      ? supabase
+          .channel(`realtime-answers-home`)
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'daily_answers', filter: `conversation_id=eq.${CONVERSATION_ID}` },
+            () => {
+              void fetchDailyAnswers();
+            }
+          )
+          .subscribe()
+      : null;
+
+    return () => {
+      mounted = false;
+      if (supabase && answersChan) void supabase.removeChannel(answersChan);
+    };
+  }, [me.id, partner.id, updateWorld]);
 
   const daysTogether = useMemo(() => {
     const start = new Date(world.anniversaryDate || new Date(nowMs).toISOString().slice(0, 10));
@@ -88,12 +177,29 @@ export default function HomePage() {
     setTimeout(() => setPingSent(false), 2200);
   }
 
-  function handleSaveDailyAnswer(e: React.FormEvent) {
+  async function handleSaveDailyAnswer(e: React.FormEvent) {
     e.preventDefault();
     if (!answerDraft.trim()) return;
-    updateWorld({ myAnswer: answerDraft.trim() });
+    const txt = answerDraft.trim();
+    updateWorld({ myAnswer: txt });
     playSoftChime('receive');
     triggerHeartbeatHaptic();
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (supabase) {
+      try {
+        await supabase.from('daily_answers').insert({
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `da-${Date.now()}`,
+          conversation_id: CONVERSATION_ID,
+          question_id: '4a28983c-da6f-4ffd-a948-decab3ce394f',
+          user_id: me.id,
+          answer: txt,
+          answer_date: todayStr,
+        });
+      } catch (err) {
+        console.warn('Failed to sync daily answer:', err);
+      }
+    }
   }
 
   return (
@@ -160,14 +266,18 @@ export default function HomePage() {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {careStatus?.batteryPercent !== null && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/75 flex items-center gap-1">
-                <BatteryCharging className="h-3 w-3 text-emerald-300" />
-                {careStatus?.batteryPercent}%
+            {partnerCare.battery !== null ? (
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/10 text-white/85 flex items-center gap-1 font-medium border border-white/10">
+                {partnerCare.charging ? (
+                  <BatteryCharging className="h-3 w-3 text-emerald-300 animate-pulse" />
+                ) : (
+                  <Battery className="h-3 w-3 text-rose-soft" />
+                )}
+                {partnerCare.charging ? `⚡ Charging • ${partnerCare.battery}%` : `${partnerCare.battery}%`}
               </span>
-            )}
+            ) : null}
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/75">
-              {partner.online ? 'Online' : 'Nearby'}
+              {partnerCare.online || partner.online ? 'Online' : 'Nearby'}
             </span>
           </div>
         </div>
