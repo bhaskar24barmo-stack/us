@@ -24,6 +24,6 @@ jobs:
       - run: npm run lint
       - run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://kxnmyfikfozlnlurdmgu.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_99BNW3zdq-dq1wjHvXs40g_PnIaiGCU' }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY || 'BIC7KGrblRjGR3vJTGPn7VnFRhu6oVihiXlLZeBvntytCccAnqpVufSFsUdpaWelc2bFZfRiUyIwokYIajJSjbQ' }}

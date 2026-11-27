@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -36,9 +37,10 @@ jobs:
           npm run typecheck
           npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://kxnmyfikfozlnlurdmgu.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_99BNW3zdq-dq1wjHvXs40g_PnIaiGCU' }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY || 'BIC7KGrblRjGR3vJTGPn7VnFRhu6oVihiXlLZeBvntytCccAnqpVufSFsUdpaWelc2bFZfRiUyIwokYIajJSjbQ' }}
+          VITE_LIVEKIT_URL: ${{ secrets.VITE_LIVEKIT_URL || 'wss://barmo-gqer5end.livekit.cloud' }}
 
       - name: Sync Capacitor Android
         run: npx cap sync android
@@ -48,7 +50,14 @@ jobs:
           if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" ]; then
             echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
           fi
-          echo "${{ secrets.ONLYUS_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          if [ -n "${{ secrets.ONLYUS_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ONLYUS_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          else
+            keytool -genkeypair -v -keystore android/app/release.keystore -alias onlyus -keyalg RSA -keysize 2048 -validity 10000 -storepass onlyus-ci-keystore -keypass onlyus-ci-keystore -dname "CN=ONLYUS,O=ONLYUS,C=IN"
+            echo "ONLYUS_KEYSTORE_PASSWORD=onlyus-ci-keystore" >> $GITHUB_ENV
+            echo "ONLYUS_KEY_ALIAS=onlyus" >> $GITHUB_ENV
+            echo "ONLYUS_KEY_PASSWORD=onlyus-ci-keystore" >> $GITHUB_ENV
+          fi
 
       - name: Build Signed Release APK
         run: |
@@ -57,9 +66,9 @@ jobs:
           ./gradlew assembleRelease
         env:
           ONLYUS_KEYSTORE_PATH: release.keystore
-          ONLYUS_KEYSTORE_PASSWORD: ${{ secrets.ONLYUS_KEYSTORE_PASSWORD }}
-          ONLYUS_KEY_ALIAS: ${{ secrets.ONLYUS_KEY_ALIAS }}
-          ONLYUS_KEY_PASSWORD: ${{ secrets.ONLYUS_KEY_PASSWORD }}
+          ONLYUS_KEYSTORE_PASSWORD: ${{ secrets.ONLYUS_KEYSTORE_PASSWORD || env.ONLYUS_KEYSTORE_PASSWORD }}
+          ONLYUS_KEY_ALIAS: ${{ secrets.ONLYUS_KEY_ALIAS || env.ONLYUS_KEY_ALIAS }}
+          ONLYUS_KEY_PASSWORD: ${{ secrets.ONLYUS_KEY_PASSWORD || env.ONLYUS_KEY_PASSWORD }}
 
       - name: Package APK & SHA-256 checksum
         run: |
