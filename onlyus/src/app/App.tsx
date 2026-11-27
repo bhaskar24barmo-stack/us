@@ -43,7 +43,7 @@ function RouteLoader() {
 
 function AppRoutes({ onOpenNotifications }: { onOpenNotifications: () => void }) {
   const location = useLocation();
-  const hideNav = location.pathname === '/camera';
+  const hideNav = location.pathname === '/camera' || location.pathname === '/chats';
 
   return (
     <>

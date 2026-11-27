@@ -7,6 +7,7 @@ import {
   BookmarkPlus,
   Camera,
   Check,
+  ChevronLeft,
   Copy,
   Edit3,
   EyeOff,
@@ -410,10 +411,18 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
       : 'from-[#ff4d8d] to-[#8b5cf6]';
 
   return (
-    <div className="flex flex-col h-full pb-[4.85rem] relative select-none bg-gradient-to-b from-[#0d0718] via-[#090412] to-[#05020a]">
+    <div className="flex flex-col h-full relative select-none bg-gradient-to-b from-[#0d0718] via-[#090412] to-[#05020a]">
       {/* Header */}
-      <header className="glass-strong sticky top-0 z-20 px-4 py-3 flex items-center justify-between gap-2 border-b border-white/10">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+      <header className="glass-strong sticky top-0 z-20 px-3.5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2.5 flex items-center justify-between gap-2 border-b border-white/10">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => navigate('/home')}
+            aria-label="Back to home"
+            className="h-9 w-9 rounded-full glass flex items-center justify-center text-white/80 hover:text-white shrink-0 -ml-1 active:scale-95 transition-transform"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
           <AvatarBubble profile={partner} size="md" showOnline />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -1052,7 +1061,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
             exit={{ opacity: 0, scale: 0.85, y: 8 }}
             onClick={() => endRef.current?.scrollIntoView({ behavior: 'smooth' })}
             aria-label="Scroll to latest message"
-            className="absolute right-5 bottom-40 z-20 h-9 w-9 rounded-full glass-strong border border-rose-glow/40 shadow-glow-pink flex items-center justify-center text-white"
+            className="absolute right-5 bottom-20 z-20 h-9 w-9 rounded-full glass-strong border border-rose-glow/40 shadow-glow-pink flex items-center justify-center text-white"
           >
             <ArrowDown className="h-4 w-4" />
           </motion.button>
@@ -1060,7 +1069,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
       </AnimatePresence>
 
       {/* Composer Area */}
-      <div className="px-3 pb-2 space-y-2">
+      <div className="px-3 pt-1 pb-[max(0.65rem,env(safe-area-inset-bottom))] space-y-2">
         <AnimatePresence>
           {pollOpen && (
             <motion.div

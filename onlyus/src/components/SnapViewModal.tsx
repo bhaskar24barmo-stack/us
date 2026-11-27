@@ -60,7 +60,7 @@ export default function SnapViewModal({
         }}
       >
         {/* Top Snapchat Header & Countdown Ring */}
-        <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+        <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
           <div className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-full bg-love-gradient flex items-center justify-center text-sm shadow-glow-pink border border-white/20">
               {partnerEmoji || '💖'}
@@ -143,7 +143,7 @@ export default function SnapViewModal({
         </div>
 
         {/* Bottom Bar: Caption & Quick Actions */}
-        <div className="absolute bottom-0 inset-x-0 z-20 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-center justify-between gap-3">
+        <div className="absolute bottom-0 inset-x-0 z-20 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
             {snap.media.caption ? (
               <div className="bg-black/55 backdrop-blur-md rounded-2xl px-3.5 py-2 text-white text-xs font-medium border border-white/10 max-w-xs truncate">

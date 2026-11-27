@@ -23,7 +23,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="absolute bottom-0 inset-x-0 z-30 px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none"
+      className="fixed bottom-0 inset-x-0 z-30 px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none"
     >
       <div className="mx-auto max-w-md glass-strong rounded-[28px] px-2 py-1.5 shadow-glass pointer-events-auto flex items-center justify-around">
         {TABS.map((tab) => {

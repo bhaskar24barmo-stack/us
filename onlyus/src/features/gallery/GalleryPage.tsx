@@ -100,7 +100,7 @@ export default function GalleryPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-4 pt-5 pb-28 space-y-4 no-scrollbar">
+    <div className="h-full overflow-y-auto px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(6rem,calc(env(safe-area-inset-bottom)+5.5rem))] space-y-4 no-scrollbar">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold bg-love-gradient bg-clip-text text-transparent">Gallery</h1>

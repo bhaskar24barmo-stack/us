@@ -292,7 +292,7 @@ export default function ActiveCallOverlay() {
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
-        className="fixed inset-0 z-50 bg-ink-950 bg-midnight-radial flex flex-col justify-between p-5 select-none"
+        className="fixed inset-0 z-50 bg-ink-950 bg-midnight-radial flex flex-col justify-between pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] px-5 select-none"
       >
         {/* Full-Screen Romantic Ringing Backdrop */}
         {activeCall.status === 'ringing' && (
