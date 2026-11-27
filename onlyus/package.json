@@ -25,6 +25,7 @@
     "@capacitor/splash-screen": "^6.0.4",
     "@capacitor/status-bar": "^6.0.3",
     "@supabase/supabase-js": "^2.45.0",
+    "firebase": "^11.0.0",
     "@tanstack/react-virtual": "^3.14.28",
     "framer-motion": "^11.3.0",
     "idb": "^8.0.4",
