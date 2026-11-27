@@ -1,6 +1,5 @@
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
-import { PushNotifications } from '@capacitor/push-notifications';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { realtimeManager } from '@/services/realtimeManager';
 
@@ -46,20 +45,9 @@ export async function initNativeShell(onBackNavigate?: () => boolean): Promise<(
 }
 
 export async function registerAndroidFcmPush(
-  onToken: (token: string) => void
+  _onToken: (token: string) => void
 ): Promise<boolean> {
-  if (!Capacitor.isNativePlatform()) return false;
-  let perm = await PushNotifications.checkPermissions();
-  if (perm.receive === 'prompt') {
-    perm = await PushNotifications.requestPermissions();
-  }
-  if (perm.receive !== 'granted') return false;
-
-  await PushNotifications.addListener('registration', (token) => {
-    onToken(token.value);
-  });
-  await PushNotifications.register();
-  return true;
+  return false;
 }
 
 export async function checkForAppUpdate(

@@ -19,7 +19,7 @@ import {
   playSoftChime,
   triggerCallNotification,
 } from '@/services/notifications';
-import { registerAndroidFcmPush } from '@/features/native/capacitorBridge';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { useAppStore } from '@/stores/useAppStore';
 
 const ActiveCallOverlay = lazy(() => import('@/features/calls/ActiveCallOverlay'));
@@ -91,9 +91,7 @@ export default function App() {
   useEffect(() => {
     useAuth.getState().init();
     void initNotificationChannel();
-    void registerAndroidFcmPush((token) => {
-      console.log('Registered FCM Token:', token);
-    });
+    void SplashScreen.hide().catch(() => {});
   }, []);
 
   useEffect(() => {

@@ -10,15 +10,13 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
+      launchShowDuration: 1200,
       backgroundColor: '#0b0614',
       showSpinner: false,
     },
     StatusBar: {
       style: 'DARK',
       backgroundColor: '#0b0614',
-    },
-    PushNotifications: {
-      presentationOptions: ['badge', 'sound', 'alert'],
     },
     LocalNotifications: {
       smallIcon: 'ic_launcher_round',
