@@ -17,11 +17,10 @@ export default function SnapPeekingAvatar({
   name,
   emoji,
   avatarPath,
-  online,
   typing,
   onTap,
 }: SnapPeekingAvatarProps) {
-  if (!online && !typing) return null;
+  if (!typing) return null;
 
   return (
     <AnimatePresence>

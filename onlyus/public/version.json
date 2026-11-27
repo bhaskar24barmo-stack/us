@@ -1,7 +1,7 @@
 {
-  "version": "1.1.0",
-  "versionCode": 10,
-  "apkUrl": "https://github.com/bhaskar24barmo-stack/us/releases/download/v1.1.0/ONLYUS-v1.1.0.apk",
-  "notes": "v1.1.0: 3D Pixar Couple Bitmoji Avatars for Bhaskar & Purvika, Animated Aura Rings, and Snapchat Sticky Peeking Bitmoji.",
+  "version": "1.1.1",
+  "versionCode": 11,
+  "apkUrl": "https://github.com/bhaskar24barmo-stack/us/releases/download/v1.1.1/ONLYUS-v1.1.1.apk",
+  "notes": "v1.1.1: Complete UI overhaul - removed clutter and redundant chips, true rounded-full circular avatars with clean scaling, streamlined Snapchat chat layout with typing-only peeking bitmoji.",
   "mandatory": false
 }

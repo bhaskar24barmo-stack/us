@@ -239,25 +239,18 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
               />
               <button
                 type="button"
-                onClick={() => updateProfile(role, { avatar_path: role === 'me' ? '/avatars/bhaskar.jpg' : '/avatars/purvika.jpg' })}
-                className="px-2.5 py-1 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-[11px] font-medium text-rose-soft border border-rose-500/30"
-              >
-                ✨ 3D Bitmoji
-              </button>
-              <button
-                type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/15 text-[11px] font-medium text-white"
+                className="px-3 py-1.5 rounded-full bg-love-gradient text-xs font-semibold text-white shadow-glow-pink flex items-center gap-1.5"
               >
-                Upload Photo
+                <Upload className="h-3.5 w-3.5" /> Upload Photo
               </button>
               {me.avatar_path && (
                 <button
                   type="button"
                   onClick={() => updateProfile(role, { avatar_path: undefined })}
-                  className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 text-[11px] text-white/60"
+                  className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs text-white/60"
                 >
-                  Remove
+                  Reset to Emoji
                 </button>
               )}
             </div>

@@ -109,7 +109,6 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     markSnapViewed,
     votePoll,
     revealWhisper,
-    setMyVibe,
     addMemory,
     markAllRead,
     purgeExpiredMessages,
@@ -1130,60 +1129,6 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
           )}
         </AnimatePresence>
 
-        {!pickerOpen && !pollOpen && !recordingVoice && !pendingAttachment && !text && !replyTo && !editingMsg && (
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-            <button
-              type="button"
-              onClick={() =>
-                sendMessage({
-                  kind: 'whisper',
-                  body: `Psst ${partner.display_name}… I’m smiling just thinking about you right now 🤫💜`,
-                  ttlSec,
-                })
-              }
-              className="shrink-0 px-3 py-1 rounded-full bg-violet-glow/20 border border-violet-glow/35 text-[11px] text-violet-200 hover:bg-violet-glow/30 transition-colors"
-            >
-              🤫 Secret Whisper
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                sendMessage({
-                  kind: 'song',
-                  song: { title: 'Until I Found You', artist: 'Stephen Sanchez' },
-                  ttlSec,
-                })
-              }
-              className="shrink-0 px-3 py-1 rounded-full bg-rose-glow/15 border border-rose-glow/30 text-[11px] text-rose-soft hover:bg-rose-glow/25 transition-colors"
-            >
-              🎵 Dedicate Song
-            </button>
-            {['Miss you 🥺', 'On my way 🚗', 'Call me? 📞', 'Goodnight 🌙', 'Love you 💖'].map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                onClick={() => sendMessage({ kind: 'text', body: chip })}
-                className="shrink-0 px-3 py-1 rounded-full glass text-[11px] text-white/80 hover:border-rose-glow/40 hover:text-white transition-colors"
-              >
-                {chip}
-              </button>
-            ))}
-            {['Cozy ☕', 'Listening 🎧', 'Missing you 🥺'].map((vibe) => (
-              <button
-                key={vibe}
-                type="button"
-                onClick={() => setMyVibe(vibe)}
-                className={`shrink-0 px-3 py-1 rounded-full text-[11px] border transition-colors ${
-                  me.status_text === vibe
-                    ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
-                    : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
-                }`}
-              >
-                Vibe: {vibe}
-              </button>
-            ))}
-          </div>
-        )}
         {pendingAttachment && (
           <div className="glass-strong rounded-2xl p-2.5 flex items-center gap-3 border border-rose-glow/30">
             <div className="h-14 w-14 rounded-xl overflow-hidden bg-black/40 shrink-0">
@@ -1414,51 +1359,26 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
             onCancel={() => setRecordingVoice(false)}
           />
         ) : (
-          <div className="space-y-1.5">
-            {/* Snapchat Sticky Bottom-Left Peeking Bitmoji */}
-            <div className="px-1">
-              <SnapPeekingAvatar
-                name={partner.display_name}
-                emoji={partner.avatar_emoji}
-                avatarPath={partner.avatar_path}
-                online={partner.online}
-                typing={partnerTyping || livePartnerTyping}
-                onTap={() => {
-                  setStormKey((k) => k + 1);
-                  triggerHeartbeatHaptic();
-                  playSoftChime('whisper');
-                }}
-              />
-            </div>
-
-            {/* Snapchat Romantic Quick Reacts Pill Bar */}
-            <div className="flex items-center gap-1.5 px-1 overflow-x-auto no-scrollbar">
-              {[
-                { emoji: '❤️', label: 'Love' },
-                { emoji: '💋', label: 'Kiss' },
-                { emoji: '🔥', label: 'Fire' },
-                { emoji: '🥺', label: 'Miss You' },
-                { emoji: '✨', label: 'Magic' },
-                { emoji: '🫂', label: 'Hug' },
-              ].map((r) => (
-                <button
-                  key={r.label}
-                  type="button"
-                  onClick={() => {
-                    sendMessage({ kind: 'text', body: `${r.emoji} ${r.label}` });
+          <div className="space-y-1">
+            {/* Snapchat Peeking Bitmoji (Smoothly floats up when partner is typing) */}
+            {(partnerTyping || livePartnerTyping) && (
+              <div className="px-1">
+                <SnapPeekingAvatar
+                  name={partner.display_name}
+                  emoji={partner.avatar_emoji}
+                  avatarPath={partner.avatar_path}
+                  online={partner.online}
+                  typing={true}
+                  onTap={() => {
+                    setStormKey((k) => k + 1);
                     triggerHeartbeatHaptic();
-                    playSoftChime('send');
-                    setFloatingHeartKey((k) => k + 1);
+                    playSoftChime('whisper');
                   }}
-                  className="shrink-0 px-2.5 py-0.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-[11px] text-white/80 flex items-center gap-1 transition-all active:scale-95"
-                >
-                  <span>{r.emoji}</span>
-                  <span className="text-[10px] text-white/50">{r.label}</span>
-                </button>
-              ))}
-            </div>
+                />
+              </div>
+            )}
 
-            <form onSubmit={handleSend} className="glass-strong rounded-[28px] p-1.5 flex items-center gap-1.5 border border-white/15">
+            <form onSubmit={handleSend} className="glass-strong rounded-full p-1.5 flex items-center gap-1.5 border border-white/15 shadow-lg">
             <input
               ref={fileInputRef}
               type="file"

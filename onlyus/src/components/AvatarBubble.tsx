@@ -10,14 +10,14 @@ interface AvatarBubbleProps {
 export default function AvatarBubble({ profile, size = 'md', showOnline = false }: AvatarBubbleProps) {
   const dims =
     size === 'xl'
-      ? 'h-24 w-24 rounded-3xl text-4xl'
+      ? 'h-20 w-20 rounded-full text-3xl'
       : size === 'lg'
-      ? 'h-16 w-16 rounded-2xl text-3xl'
+      ? 'h-14 w-14 rounded-full text-2xl'
       : size === 'sm'
-      ? 'h-9 w-9 rounded-xl text-base'
-      : 'h-11 w-11 rounded-2xl text-xl';
+      ? 'h-8 w-8 rounded-full text-sm'
+      : 'h-10 w-10 rounded-full text-lg';
 
-  const auraRing = profile.aura_ring ?? 'heartbeat';
+  const auraRing = profile.aura_ring ?? 'none';
 
   const ringStyle =
     auraRing === 'heartbeat'
@@ -25,10 +25,10 @@ export default function AvatarBubble({ profile, size = 'md', showOnline = false 
       : auraRing === 'golden'
       ? 'ring-2 ring-amber-400/90 shadow-glow-amber'
       : auraRing === 'flame'
-      ? 'ring-2 ring-orange-500/90 shadow-lg shadow-orange-500/40'
+      ? 'ring-2 ring-orange-500/90 shadow-md shadow-orange-500/40'
       : auraRing === 'rose'
       ? 'ring-2 ring-pink-400/80 shadow-glow-pink'
-      : 'ring-1 ring-white/20';
+      : 'ring-1 ring-white/15';
 
   const isLateNight = (() => {
     const hour = new Date().getHours();
@@ -38,20 +38,20 @@ export default function AvatarBubble({ profile, size = 'md', showOnline = false 
   return (
     <div className="relative shrink-0 select-none">
       <motion.div
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className={`${dims} overflow-hidden flex items-center justify-center border border-white/20 ${ringStyle} transition-all duration-300`}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
+        className={`${dims} rounded-full overflow-hidden flex items-center justify-center border border-white/20 ${ringStyle} transition-all duration-300`}
         style={{ background: `linear-gradient(135deg, ${profile.accent_color}, #8b5cf6)` }}
       >
         {profile.avatar_path ? (
           <img
             src={profile.avatar_path}
             alt={profile.display_name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover object-center rounded-full"
             loading="lazy"
           />
         ) : (
-          <span>{profile.avatar_emoji}</span>
+          <span className="font-semibold select-none leading-none">{profile.avatar_emoji}</span>
         )}
       </motion.div>
 
