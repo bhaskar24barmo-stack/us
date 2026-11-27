@@ -29,8 +29,6 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
-
       - name: Install dependencies and build web bundle
         run: |
           npm ci
@@ -73,8 +71,15 @@ jobs:
       - name: Package APK & SHA-256 checksum
         run: |
           mkdir -p dist-apk
-          TAG=${GITHUB_REF_NAME}
-          cp android/app/build/outputs/apk/release/app-release.apk "dist-apk/ONLYUS-${TAG}.apk"
+          TAG=${GITHUB_REF_NAME:-v1.0.1}
+          APK_FILE=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            echo "No APK found in build outputs!"
+            find android/app/build/outputs/ -type f
+            exit 1
+          fi
+          echo "Found APK: $APK_FILE"
+          cp "$APK_FILE" "dist-apk/ONLYUS-${TAG}.apk"
           sha256sum "dist-apk/ONLYUS-${TAG}.apk" > "dist-apk/ONLYUS-${TAG}.apk.sha256"
 
       - name: Upload APK artifact
