@@ -15,10 +15,15 @@ import NotificationCenter, { ToastStack } from '@/features/notifications/Notific
 import { subscribeCallSignals } from '@/services/callSignaling';
 import {
   cancelCallNotification,
+  initNotificationActionListeners,
   initNotificationChannel,
   playSoftChime,
   triggerCallNotification,
+  triggerDeviceNotification,
+  triggerHeartbeatHaptic,
 } from '@/services/notifications';
+import { CONVERSATION_ID } from '@/data/demoData';
+import { supabase } from '@/lib/supabase';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { useAppStore } from '@/stores/useAppStore';
 
@@ -92,7 +97,61 @@ export default function App() {
     useAuth.getState().init();
     void initNotificationChannel();
     void SplashScreen.hide().catch(() => {});
+    initNotificationActionListeners((route) => {
+      if (window.location.pathname !== route) {
+        window.location.assign(route);
+      }
+    });
   }, []);
+
+  useEffect(() => {
+    if (!currentUserRole || !onboarded || !supabase) return;
+    const myId = useAppStore.getState().profiles[currentUserRole].id;
+    const partner = useAppStore.getState().profiles[currentUserRole === 'me' ? 'partner' : 'me'];
+
+    const ch = supabase
+      .channel(`app-messages-${CONVERSATION_ID}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${CONVERSATION_ID}`,
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          if (row && row.sender_id !== myId) {
+            void useAppStore.getState().syncRemoteMessages();
+            const preview =
+              row.kind === 'gif'
+                ? 'Sent a GIF 🎞️'
+                : row.kind === 'sticker'
+                ? 'Sent a sticker ✨'
+                : row.kind === 'whisper'
+                ? 'Sent a Secret Whisper 🤫'
+                : row.kind === 'image'
+                ? 'Sent a Snap 📸'
+                : row.kind === 'video'
+                ? 'Sent a Video Snap 🎥'
+                : row.kind === 'voice'
+                ? 'Sent a Voice Note 🎙️'
+                : (row.body as string) || 'Sent a sweet note 💌';
+
+            void triggerDeviceNotification(`${partner.display_name} 💖`, preview);
+            void triggerHeartbeatHaptic();
+            if (useAppStore.getState().settings.soundEffects) {
+              playSoftChime(row.kind === 'whisper' ? 'whisper' : 'receive');
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void ch.unsubscribe();
+    };
+  }, [currentUserRole, onboarded]);
 
   useEffect(() => {
     if (!currentUserRole || !onboarded) return;

@@ -49,7 +49,6 @@ import { ANIMATED_GIF_CATALOG } from '@/services/gifs';
 import { flushOutbox, enqueueOutbox } from '@/features/chat/outbox';
 import { sendOutboxMessageToSupabase } from '@/services/chatSync';
 import { formatWhatsAppLastSeen, OpenPresenceClient } from '@/services/presence';
-import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/stores/useAppStore';
 import type { Message } from '@/types/models';
 
@@ -174,30 +173,8 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     window.addEventListener('online', handleOnline);
     void flushOutbox(sendOutboxMessageToSupabase);
 
-    const ch = supabase
-      ? supabase
-          .channel(`direct-msg-${CONVERSATION_ID}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'messages',
-              filter: `conversation_id=eq.${CONVERSATION_ID}`,
-            },
-            (payload) => {
-              const row = payload.new as Record<string, unknown>;
-              if (row && row.sender_id !== me.id) {
-                void syncRemoteMessages();
-              }
-            }
-          )
-          .subscribe()
-      : null;
-
     return () => {
       window.removeEventListener('online', handleOnline);
-      if (ch) void ch.unsubscribe();
     };
   }, [me.id, syncRemoteMessages]);
 

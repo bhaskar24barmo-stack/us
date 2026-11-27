@@ -7,8 +7,8 @@ android {
         applicationId "com.onlyus.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 12
-        versionName "1.1.2"
+        versionCode 13
+        versionName "1.1.3"
         ndk {
             abiFilters 'arm64-v8a', 'armeabi-v7a'
         }

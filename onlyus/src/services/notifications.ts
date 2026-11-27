@@ -128,6 +128,18 @@ export async function initNotificationChannel(): Promise<void> {
   }
 }
 
+export function initNotificationActionListeners(onNavigate: (route: string) => void) {
+  try {
+    void LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+      const extra = action.notification.extra as { route?: string; kind?: string } | undefined;
+      const target = extra?.route || (extra?.kind ? '/calls' : '/chats');
+      onNavigate(target);
+    });
+  } catch {
+    // Non-native fallback
+  }
+}
+
 export async function requestBrowserNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
   try {
     const status = await LocalNotifications.requestPermissions();
@@ -199,7 +211,7 @@ export async function triggerDeviceNotification(title: string, body: string, id?
           smallIcon: 'ic_launcher_round',
           iconColor: '#ff4d8d',
           actionTypeId: '',
-          extra: null,
+          extra: { route: '/chats' },
         },
       ],
     });
