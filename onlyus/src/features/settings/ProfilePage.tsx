@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Shield,
   Smartphone,
+  Sparkles,
   Sun,
   Upload,
   Volume2,
@@ -228,7 +229,7 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
                 {me.online ? 'Online' : 'Appear Away'}
               </button>
             </div>
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
               <input
                 ref={avatarInputRef}
                 type="file"
@@ -238,10 +239,17 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
               />
               <button
                 type="button"
+                onClick={() => updateProfile(role, { avatar_path: role === 'me' ? '/avatars/bhaskar.jpg' : '/avatars/purvika.jpg' })}
+                className="px-2.5 py-1 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-[11px] font-medium text-rose-soft border border-rose-500/30"
+              >
+                ✨ 3D Bitmoji
+              </button>
+              <button
+                type="button"
                 onClick={() => avatarInputRef.current?.click()}
                 className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/15 text-[11px] font-medium text-white"
               >
-                Change Photo
+                Upload Photo
               </button>
               {me.avatar_path && (
                 <button
@@ -252,6 +260,36 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
                   Remove
                 </button>
               )}
+            </div>
+
+            {/* Animated Aura Ring Selector */}
+            <div className="pt-2">
+              <div className="text-[11px] font-semibold text-white/70 mb-1.5 flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-rose-soft" />
+                Animated Aura Ring
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'heartbeat', label: '❤️ Pulse' },
+                  { id: 'golden', label: '✨ Golden' },
+                  { id: 'flame', label: '🔥 Streak' },
+                  { id: 'rose', label: '🌸 Bloom' },
+                  { id: 'none', label: 'Minimal' },
+                ].map((ring) => (
+                  <button
+                    key={ring.id}
+                    type="button"
+                    onClick={() => updateProfile(role, { aura_ring: ring.id as 'heartbeat' | 'golden' | 'flame' | 'rose' | 'none' })}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all ${
+                      (me.aura_ring ?? 'heartbeat') === ring.id
+                        ? 'bg-love-gradient text-white border-rose-glow shadow-glow-pink'
+                        : 'bg-white/5 border-white/10 text-white/70 hover:text-white'
+                    }`}
+                  >
+                    {ring.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

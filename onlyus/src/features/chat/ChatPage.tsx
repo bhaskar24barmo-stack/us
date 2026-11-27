@@ -1130,14 +1130,6 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
           )}
         </AnimatePresence>
 
-        <SnapPeekingAvatar
-          name={partner.display_name}
-          emoji={partner.avatar_emoji}
-          online={partner.online}
-          typing={partnerTyping || livePartnerTyping}
-          onTap={() => setStormKey((k) => k + 1)}
-        />
-
         {!pickerOpen && !pollOpen && !recordingVoice && !pendingAttachment && !text && !replyTo && !editingMsg && (
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
             <button
@@ -1423,6 +1415,22 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
           />
         ) : (
           <div className="space-y-1.5">
+            {/* Snapchat Sticky Bottom-Left Peeking Bitmoji */}
+            <div className="px-1">
+              <SnapPeekingAvatar
+                name={partner.display_name}
+                emoji={partner.avatar_emoji}
+                avatarPath={partner.avatar_path}
+                online={partner.online}
+                typing={partnerTyping || livePartnerTyping}
+                onTap={() => {
+                  setStormKey((k) => k + 1);
+                  triggerHeartbeatHaptic();
+                  playSoftChime('whisper');
+                }}
+              />
+            </div>
+
             {/* Snapchat Romantic Quick Reacts Pill Bar */}
             <div className="flex items-center gap-1.5 px-1 overflow-x-auto no-scrollbar">
               {[

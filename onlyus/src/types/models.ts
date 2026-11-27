@@ -53,6 +53,7 @@ export interface Profile {
   last_seen: string;
   accent_color: string;
   birthday: string;
+  aura_ring?: 'heartbeat' | 'golden' | 'flame' | 'rose' | 'none';
 }
 
 export interface MediaAttachment {

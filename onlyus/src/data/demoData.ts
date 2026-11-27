@@ -15,7 +15,7 @@ export const DEMO_PROFILES: Record<'me' | 'partner', Profile> = {
     role: 'me',
     display_name: 'Bhaskar',
     nickname: 'Bhu',
-    avatar_path: null,
+    avatar_path: '/avatars/bhaskar.jpg',
     avatar_emoji: '🖤',
     bio: 'Building our little universe, one late-night call at a time.',
     status_text: 'Thinking of Purvika ✨',
@@ -23,13 +23,14 @@ export const DEMO_PROFILES: Record<'me' | 'partner', Profile> = {
     last_seen: new Date().toISOString(),
     accent_color: '#ff4d8d',
     birthday: '2001-08-14',
+    aura_ring: 'flame',
   },
   partner: {
     id: 'bdd942c4-19c2-472d-8a4d-dc5b99895e5d',
     role: 'partner',
     display_name: 'Purvika',
     nickname: 'Puri',
-    avatar_path: null,
+    avatar_path: '/avatars/purvika.jpg',
     avatar_emoji: '🌸',
     bio: 'Yours in every lifetime. Coffee, midnight talks & long drives.',
     status_text: 'Online • Listening to our playlist',
@@ -37,6 +38,7 @@ export const DEMO_PROFILES: Record<'me' | 'partner', Profile> = {
     last_seen: new Date().toISOString(),
     accent_color: '#8b5cf6',
     birthday: '2002-04-22',
+    aura_ring: 'heartbeat',
   },
 };
 
