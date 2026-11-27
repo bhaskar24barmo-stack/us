@@ -90,6 +90,9 @@ export interface Message {
   revealed?: boolean;
   reply_to_id: string | null;
   reactions: Reaction[];
+  saved_in_chat?: boolean;
+  is_snap?: boolean;
+  snap_viewed?: boolean;
   edited_at: string | null;
   deleted_at: string | null;
   pinned_at: string | null;

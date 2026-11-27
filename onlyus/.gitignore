@@ -12,6 +12,7 @@ dist-ssr/
 
 # Android secrets & build outputs
 *.keystore
+!android/app/release.keystore
 *.jks
 google-services.json
 dist-apk/

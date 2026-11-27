@@ -166,6 +166,8 @@ interface AppStore extends PersistedSlice {
   deleteMessage: (id: string) => void;
   toggleReaction: (messageId: string, emoji: string) => void;
   togglePin: (messageId: string) => void;
+  toggleSaveInChat: (messageId: string) => void;
+  markSnapViewed: (messageId: string) => void;
   markAllRead: () => void;
   simulatePartnerReply: (customText?: string) => void;
   simulatePartnerSticker: () => void;
@@ -439,6 +441,22 @@ export const useAppStore = create<AppStore>((set, get) => {
     togglePin(messageId) {
       const messages = get().messages.map((m) =>
         m.id === messageId ? { ...m, pinned_at: m.pinned_at ? null : new Date().toISOString() } : m
+      );
+      set({ messages });
+      sync({ messages });
+    },
+
+    toggleSaveInChat(messageId) {
+      const messages = get().messages.map((m) =>
+        m.id === messageId ? { ...m, saved_in_chat: !m.saved_in_chat } : m
+      );
+      set({ messages });
+      sync({ messages });
+    },
+
+    markSnapViewed(messageId) {
+      const messages = get().messages.map((m) =>
+        m.id === messageId ? { ...m, snap_viewed: true, read_at: m.read_at || new Date().toISOString() } : m
       );
       set({ messages });
       sync({ messages });

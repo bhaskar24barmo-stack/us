@@ -3,6 +3,7 @@ import {
   ArrowDown,
   BarChart2,
   Bell,
+  BookmarkCheck,
   BookmarkPlus,
   Camera,
   Check,
@@ -10,6 +11,7 @@ import {
   Copy,
   Edit3,
   EyeOff,
+  Flame,
   Heart,
   HeartPulse,
   ImagePlus,
@@ -17,12 +19,14 @@ import {
   Music,
   Phone,
   Pin,
+  Play,
   Plus,
   Reply,
   Search,
   Send,
   Smile,
   Sparkles,
+  Square,
   Timer,
   Trash2,
   Video,
@@ -34,6 +38,7 @@ import { STICKER_CATALOG } from '@/data/demoData';
 import AvatarBubble from '@/components/AvatarBubble';
 import LoveStormOverlay from '@/components/LoveStormOverlay';
 import SnapPeekingAvatar from '@/components/SnapPeekingAvatar';
+import SnapViewModal from '@/components/SnapViewModal';
 import VoiceMessagePlayer from '@/features/chat/VoiceMessagePlayer';
 import VoiceRecorderBar from '@/features/chat/VoiceRecorderBar';
 import { StickerCard } from '@/features/stickers/StickerPicker';
@@ -97,6 +102,8 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     deleteMessage,
     toggleReaction,
     togglePin,
+    toggleSaveInChat,
+    markSnapViewed,
     votePoll,
     revealWhisper,
     setMyVibe,
@@ -107,12 +114,17 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     updateProfile,
     openMediaViewer,
     startCall,
+    world,
   } = useAppStore();
 
   const role = currentUserRole ?? 'me';
   const partnerRole = role === 'me' ? 'partner' : 'me';
   const me = profiles[role];
   const partner = profiles[partnerRole];
+
+  const streakCount = Math.max(1, world?.streakDays || 1);
+  const [streakToast, setStreakToast] = useState(false);
+  const [viewingSnap, setViewingSnap] = useState<Message | null>(null);
 
   const [text, setText] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -326,7 +338,22 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <AvatarBubble profile={partner} size="md" showOnline />
           <div className="min-w-0 flex-1">
-            <h1 className="font-semibold text-base truncate leading-tight">{partner.display_name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-semibold text-base truncate leading-tight">{partner.display_name}</h1>
+              {/* Snapchat Streak Flame */}
+              <button
+                type="button"
+                onClick={() => {
+                  setStreakToast(true);
+                  setTimeout(() => setStreakToast(false), 3200);
+                }}
+                title={`${streakCount} day love streak! Tap for info`}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/40 text-amber-300 text-[11px] font-bold shadow-sm hover:scale-105 active:scale-95 transition-transform"
+              >
+                <Flame className="h-3.5 w-3.5 fill-amber-400 text-amber-400 animate-pulse" />
+                <span>{streakCount}</span>
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => updateProfile(role, { online: !me.online })}
@@ -510,9 +537,11 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                     setDoubleTapHeartId(msg.id);
                     setTimeout(() => setDoubleTapHeartId(null), 700);
                   }}
-                  className={`relative max-w-[82%] sm:max-w-[70%] cursor-pointer group ${
+                  className={`relative max-w-[84%] sm:max-w-[72%] cursor-pointer group transition-all ${
                     msg.deleted_at
                       ? 'glass rounded-2xl px-3.5 py-2 italic text-white/45 text-xs'
+                      : msg.saved_in_chat
+                      ? 'border-l-4 border-rose-500 bg-white/10 rounded-2xl px-3.5 py-2.5 shadow-lg shadow-black/20 text-white'
                       : msg.kind === 'sticker'
                       ? 'p-1'
                       : msg.kind === 'love_note'
@@ -574,23 +603,78 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                       )}
 
                       {msg.media && (msg.kind === 'image' || msg.kind === 'video') && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openMediaViewer(msg.id);
-                          }}
-                          className="mb-1.5 overflow-hidden rounded-2xl border border-white/15"
-                        >
-                          {msg.kind === 'image' ? (
-                            <img
-                              src={msg.media.url}
-                              alt={msg.media.caption || 'Shared photo'}
-                              className="max-h-60 w-full object-cover"
-                            />
-                          ) : (
-                            <video src={msg.media.url} className="max-h-60 w-full object-cover" muted />
-                          )}
-                        </div>
+                        !msg.saved_in_chat ? (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markSnapViewed(msg.id);
+                              setViewingSnap(msg);
+                            }}
+                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer select-none ${
+                              msg.snap_viewed || msg.read_at
+                                ? 'bg-white/5 border-white/10 hover:bg-white/10'
+                                : msg.kind === 'video'
+                                ? 'bg-purple-950/45 border-purple-500/40 hover:bg-purple-900/50 shadow-md shadow-purple-500/15'
+                                : 'bg-red-950/45 border-red-500/40 hover:bg-red-900/50 shadow-md shadow-red-500/15'
+                            }`}
+                          >
+                            <div
+                              className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                msg.snap_viewed || msg.read_at
+                                  ? msg.kind === 'video'
+                                    ? 'border-2 border-purple-400 text-purple-400'
+                                    : 'border-2 border-red-400 text-red-400'
+                                  : msg.kind === 'video'
+                                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                                  : 'bg-red-500 text-white shadow-lg shadow-red-500/30'
+                              }`}
+                            >
+                              {msg.snap_viewed || msg.read_at ? (
+                                msg.kind === 'video' ? <Play className="h-4 w-4" /> : <Square className="h-4 w-4" />
+                              ) : (
+                                msg.kind === 'video' ? <Play className="h-4 w-4 fill-white" /> : <Square className="h-4 w-4 fill-white" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0 pr-1">
+                              <div className="text-xs font-bold text-white flex items-center gap-1.5 leading-tight">
+                                <span>
+                                  {msg.snap_viewed || msg.read_at
+                                    ? 'Opened'
+                                    : msg.kind === 'video'
+                                    ? 'New Video Snap'
+                                    : 'New Snap'}
+                                </span>
+                                {!(msg.snap_viewed || msg.read_at) && (
+                                  <span className={`h-2 w-2 rounded-full animate-ping ${msg.kind === 'video' ? 'bg-purple-400' : 'bg-red-400'}`} />
+                                )}
+                              </div>
+                              <div className="text-[10px] text-white/60">
+                                {msg.snap_viewed || msg.read_at ? 'Tap to replay' : 'Tap to view'} • {formatTime(msg.created_at)}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openMediaViewer(msg.id);
+                            }}
+                            className="mb-1.5 overflow-hidden rounded-2xl border border-white/15"
+                          >
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-black/50 text-[10px] text-white/90 font-medium">
+                              <BookmarkCheck className="h-3.5 w-3.5 text-rose-soft" /> Saved in Chat
+                            </div>
+                            {msg.kind === 'image' ? (
+                              <img
+                                src={msg.media.url}
+                                alt={msg.media.caption || 'Shared photo'}
+                                className="max-h-60 w-full object-cover"
+                              />
+                            ) : (
+                              <video src={msg.media.url} className="max-h-60 w-full object-cover" muted />
+                            )}
+                          </div>
+                        )
                       )}
 
                       {msg.kind === 'voice' && msg.media && (
@@ -772,6 +856,21 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                         className="p-1.5 rounded-lg hover:bg-white/10 text-white/75"
                       >
                         <Pin className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          toggleSaveInChat(msg.id);
+                          setActiveMenuId(null);
+                        }}
+                        aria-label="Save in Chat"
+                        title={msg.saved_in_chat ? 'Remove from Chat' : 'Save in Chat'}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          msg.saved_in_chat
+                            ? 'bg-rose-500/25 text-rose-soft'
+                            : 'hover:bg-white/10 text-white/75 hover:text-white'
+                        }`}
+                      >
+                        <BookmarkCheck className="h-3.5 w-3.5" />
                       </button>
                       {msg.body && (
                         <button
@@ -1187,7 +1286,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
             onCancel={() => setRecordingVoice(false)}
           />
         ) : (
-          <form onSubmit={handleSend} className="glass-strong rounded-[28px] p-1.5 flex items-center gap-2">
+          <form onSubmit={handleSend} className="glass-strong rounded-[28px] p-1.5 flex items-center gap-1.5 border border-white/15">
             <input
               ref={fileInputRef}
               type="file"
@@ -1195,27 +1294,37 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
               onChange={handleFileAttach}
               className="hidden"
             />
+
+            {/* Snapchat Shutter / Camera Shortcut Button */}
             <button
               type="button"
-              onClick={() => {
-                setActionsOpen((v) => !v);
-                setPickerOpen(false);
-              }}
-              aria-label="More actions"
-              className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 transition-transform ${
-                actionsOpen
-                  ? 'bg-rose-glow/25 text-rose-glow rotate-45'
-                  : 'bg-love-gradient text-white shadow-glow-pink'
-              }`}
+              onClick={() => navigate('/camera')}
+              title="Snapchat Camera"
+              aria-label="Open Camera"
+              className="h-10 w-10 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-violet-500 p-0.5 shrink-0 shadow-glow-pink hover:scale-105 active:scale-95 transition-transform flex items-center justify-center"
             >
-              <Plus className="h-5 w-5" />
+              <div className="h-full w-full rounded-full bg-ink-950 flex items-center justify-center">
+                <Camera className="h-4 w-4 text-amber-300" />
+              </div>
             </button>
 
+            {/* Quick Gallery Snap */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Send Photo/Video Snap"
+              aria-label="Gallery Snap"
+              className="h-9 w-9 rounded-full glass hover:bg-white/15 flex items-center justify-center shrink-0 text-white/75 hover:text-white transition-colors"
+            >
+              <ImagePlus className="h-4 w-4" />
+            </button>
+
+            {/* Snapchat Style Input */}
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={whisperMode ? 'Type a secret whisper…' : 'Message…'}
-              className="flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-white/40 min-w-0"
+              placeholder={whisperMode ? 'Send a secret whisper…' : 'Send a chat…'}
+              className="flex-1 bg-transparent px-2.5 text-sm outline-none placeholder:text-white/40 min-w-0"
             />
 
             {(whisperMode || ttlSec) && (
@@ -1232,6 +1341,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
               </span>
             )}
 
+            {/* Sticker / Bitmoji picker */}
             <button
               type="button"
               onClick={() => {
@@ -1243,15 +1353,33 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                 pickerOpen ? 'bg-rose-glow/25 text-rose-glow' : 'text-white/70 hover:bg-white/10'
               }`}
             >
-              <Smile className="h-5 w-5" />
+              <Smile className="h-4 w-4" />
             </button>
 
+            {/* Romantic Action Drawer Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                setActionsOpen((v) => !v);
+                setPickerOpen(false);
+              }}
+              aria-label="More romantic actions"
+              className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 transition-transform ${
+                actionsOpen
+                  ? 'bg-rose-glow/25 text-rose-glow rotate-45'
+                  : 'text-white/70 hover:bg-white/10'
+              }`}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+
+            {/* Snapchat Blue Send Arrow or Voice Snap Mic */}
             {text.trim() || pendingAttachment ? (
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 type="submit"
                 aria-label="Send message"
-                className="h-10 w-10 rounded-full bg-love-gradient text-white flex items-center justify-center shrink-0 shadow-glow-pink"
+                className="h-9 w-9 rounded-full bg-sky-500 hover:bg-sky-400 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-500/30"
               >
                 <Send className="h-4 w-4" />
               </motion.button>
@@ -1260,7 +1388,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                 type="button"
                 onClick={() => setRecordingVoice(true)}
                 aria-label="Record voice note"
-                className="h-10 w-10 rounded-full bg-white/10 hover:bg-rose-glow/25 text-white flex items-center justify-center shrink-0"
+                className="h-9 w-9 rounded-full bg-white/10 hover:bg-rose-glow/25 text-white flex items-center justify-center shrink-0"
               >
                 <Mic className="h-4 w-4" />
               </button>
@@ -1268,6 +1396,51 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
           </form>
         )}
       </div>
+
+      {/* Snapchat Fullscreen Snap Viewer */}
+      <SnapViewModal
+        snap={viewingSnap}
+        partnerName={partner.display_name}
+        partnerEmoji={partner.avatar_emoji}
+        onClose={() => setViewingSnap(null)}
+        onSaveToMemories={(snap) => {
+          if (snap.media) {
+            addMemory({
+              title: snap.media.caption || 'Saved Snap',
+              date: new Date().toISOString().slice(0, 10),
+              note: 'Saved from private snap',
+              image_url: snap.media.url,
+              favorite: true,
+            });
+            toggleSaveInChat(snap.id);
+          }
+        }}
+        onDoubleTapHeart={(snapId) => {
+          toggleReaction(snapId, '❤️');
+          setFloatingHeartKey((k) => k + 1);
+        }}
+      />
+
+      {/* Snapchat Streak Toast */}
+      <AnimatePresence>
+        {streakToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.9 }}
+            className="fixed top-16 inset-x-4 mx-auto max-w-xs z-50 p-3.5 rounded-2xl glass-strong border border-amber-400/40 shadow-glow-amber text-center pointer-events-none"
+          >
+            <div className="flex items-center justify-center gap-1.5 text-amber-300 font-bold text-sm mb-1">
+              <Flame className="h-4 w-4 fill-amber-400 animate-pulse" />
+              <span>{streakCount} Day Snap Streak!</span>
+            </div>
+            <p className="text-[11px] text-white/80">
+              You & {partner.display_name} have kept your private flame alive! Keep snapping daily.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <LoveStormOverlay burstKey={stormKey} />
     </div>
   );
