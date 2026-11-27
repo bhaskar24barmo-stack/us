@@ -1,13 +1,19 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Heart, Sparkles } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Heart, KeyRound, Mail, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import FloatingHearts from '@/components/FloatingHearts';
+import { useAuth } from '@/features/auth/authStore';
 import { useAppStore } from '@/stores/useAppStore';
 import type { UserRole } from '@/types/models';
 
 type Stage = 'splash' | 'welcome' | 'login' | 'setup' | 'permissions';
 
 const ACCENT_COLORS = ['#ff4d8d', '#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e'];
+
+const PARTNER_EMAILS: Record<UserRole, string> = {
+  me: 'gnbhaskar636@gmail.com',
+  partner: 'mamathakp9481@gmail.com',
+};
 
 export default function SplashAndOnboarding() {
   const {
@@ -21,12 +27,24 @@ export default function SplashAndOnboarding() {
     completeOnboarding,
   } = useAppStore();
 
+  const { signIn, signInWithOtp, verifyOtp } = useAuth();
+
   const [stage, setStage] = useState<Stage>(() => {
     if (currentUserRole && !onboarded) return 'setup';
     return 'splash';
   });
 
   const [selectedRole, setSelectedRole] = useState<UserRole>(currentUserRole ?? 'me');
+  const [authMode, setAuthMode] = useState<'password' | 'otp'>('password');
+  const [emailInput, setEmailInput] = useState(PARTNER_EMAILS.me);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [otpToken, setOtpToken] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+
   const [nameInput, setNameInput] = useState(profiles[selectedRole].display_name);
   const [partnerNameInput, setPartnerNameInput] = useState(
     profiles[selectedRole === 'me' ? 'partner' : 'me'].display_name
@@ -39,13 +57,22 @@ export default function SplashAndOnboarding() {
   );
   const [timezoneInput] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   const [permNotif, setPermNotif] = useState<'idle' | 'granted' | 'denied'>('idle');
-  const [codeInput, setCodeInput] = useState(pairCode);
+  const [codeInput] = useState(pairCode);
 
   useEffect(() => {
     if (stage !== 'splash') return;
     const t = setTimeout(() => setStage('welcome'), 1600);
     return () => clearTimeout(t);
   }, [stage]);
+
+  function handleSelectRolePill(role: UserRole) {
+    setSelectedRole(role);
+    setEmailInput(PARTNER_EMAILS[role]);
+    setAuthError(null);
+    setAuthSuccess(null);
+    setOtpSent(false);
+    setOtpToken('');
+  }
 
   function handleSelectProfile(role: UserRole) {
     const other: UserRole = role === 'me' ? 'partner' : 'me';
@@ -56,6 +83,55 @@ export default function SplashAndOnboarding() {
     setEmojiInput(profiles[role].avatar_emoji);
     signInAsRole(role);
     setStage('setup');
+  }
+
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthBusy(true);
+    setAuthError(null);
+    setAuthSuccess(null);
+
+    const err = await signIn(emailInput, passwordInput);
+    setAuthBusy(false);
+
+    if (err) {
+      setAuthError(err);
+    } else {
+      const role: UserRole = emailInput.toLowerCase().includes('gnbhaskar') ? 'me' : 'partner';
+      handleSelectProfile(role);
+    }
+  }
+
+  async function handleSendOtp() {
+    setAuthBusy(true);
+    setAuthError(null);
+    setAuthSuccess(null);
+
+    const res = await signInWithOtp(emailInput);
+    setAuthBusy(false);
+
+    if (!res.ok) {
+      setAuthError(res.error ?? 'Could not send verification code.');
+    } else {
+      setOtpSent(true);
+      setAuthSuccess(`6-digit login code sent to ${emailInput}! Check your inbox.`);
+    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthBusy(true);
+    setAuthError(null);
+
+    const res = await verifyOtp(emailInput, otpToken);
+    setAuthBusy(false);
+
+    if (!res.ok) {
+      setAuthError(res.error ?? 'Invalid or expired code.');
+    } else {
+      const role: UserRole = emailInput.toLowerCase().includes('gnbhaskar') ? 'me' : 'partner';
+      handleSelectProfile(role);
+    }
   }
 
   function handleFinishSetup(e: React.FormEvent) {
@@ -130,12 +206,12 @@ export default function SplashAndOnboarding() {
               Welcome to ONLYUS
             </h2>
             <p className="mt-3 text-sm text-white/70 leading-relaxed">
-              Your private space for instant snaps, voice notes, HD video calls, stories, and real-time presence.
+              Your private sanctuary for instant snaps, voice notes, HD video calls, and real-time presence.
             </p>
             <div className="mt-6 grid grid-cols-3 gap-2 text-[11px] text-white/80">
               <div className="glass rounded-2xl px-2 py-2.5 whitespace-nowrap">💬 Private Chat</div>
-              <div className="glass rounded-2xl px-2 py-2.5 whitespace-nowrap">📸 Live Camera</div>
-              <div className="glass rounded-2xl px-2 py-2.5 whitespace-nowrap">✨ Moments</div>
+              <div className="glass rounded-2xl px-2 py-2.5 whitespace-nowrap">📸 Live Moments</div>
+              <div className="glass rounded-2xl px-2 py-2.5 whitespace-nowrap">📞 HD Calls</div>
             </div>
             <motion.button
               whileTap={{ scale: 0.97 }}
@@ -153,46 +229,202 @@ export default function SplashAndOnboarding() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="relative z-10 w-full max-w-md glass rounded-[32px] p-7 shadow-glass"
+            className="relative z-10 w-full max-w-md glass rounded-[32px] p-6 shadow-glass space-y-4"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">Choose Profile</h2>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Sign In</h2>
+                <p className="text-xs text-white/60">Choose your profile to enter ONLYUS</p>
+              </div>
               <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                2 / 2 Linked
+                2 Members
               </span>
             </div>
 
-            <div className="space-y-3">
+            {/* Profile Selection Pills */}
+            <div className="grid grid-cols-2 gap-2.5">
               {(['me', 'partner'] as UserRole[]).map((role) => {
                 const p = profiles[role];
+                const isSelected = selectedRole === role;
                 return (
-                  <motion.button
+                  <button
                     key={role}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleSelectProfile(role)}
-                    className="w-full glass rounded-2xl p-4 flex items-center gap-4 text-left hover:border-rose-glow/50 transition-all"
+                    type="button"
+                    onClick={() => handleSelectRolePill(role)}
+                    className={`rounded-2xl p-3 flex items-center gap-2.5 text-left transition-all border ${
+                      isSelected
+                        ? 'bg-white/15 border-rose-glow shadow-glow-pink'
+                        : 'glass border-white/10 hover:border-white/20'
+                    }`}
                   >
                     <div
-                      className="h-14 w-14 rounded-2xl flex items-center justify-center text-2xl shadow-glow-pink shrink-0"
+                      className="h-10 w-10 rounded-xl flex items-center justify-center text-xl shrink-0"
                       style={{ background: `linear-gradient(135deg, ${p.accent_color}, #8b5cf6)` }}
                     >
                       {p.avatar_emoji}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-base">{p.display_name}</span>
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/75">
-                          {role === 'me' ? 'Bhaskar' : 'Purvika'}
-                        </span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm truncate">{p.display_name}</div>
+                      <div className="text-[10px] text-white/60 truncate">
+                        {role === 'me' ? 'Bhaskar' : 'Purvika'}
                       </div>
-                      <p className="text-xs text-white/60 truncate mt-0.5">{p.bio}</p>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-white/50" />
-                  </motion.button>
+                  </button>
                 );
               })}
             </div>
+
+            {/* Auth Mode Tabs */}
+            <div className="grid grid-cols-2 p-1 rounded-2xl bg-white/5 border border-white/10 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => { setAuthMode('password'); setAuthError(null); }}
+                className={`py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors ${
+                  authMode === 'password' ? 'bg-love-gradient text-white font-semibold' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                <KeyRound className="h-3.5 w-3.5" /> Password
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAuthMode('otp'); setAuthError(null); }}
+                className={`py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors ${
+                  authMode === 'otp' ? 'bg-love-gradient text-white font-semibold' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                <Mail className="h-3.5 w-3.5" /> Email Code
+              </button>
+            </div>
+
+            {authError && (
+              <div role="alert" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs">
+                {authError}
+              </div>
+            )}
+
+            {authSuccess && (
+              <div role="status" className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs">
+                {authSuccess}
+              </div>
+            )}
+
+            {/* Password Auth Form */}
+            {authMode === 'password' && (
+              <form onSubmit={handlePasswordSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-[11px] text-white/60 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-sm text-white placeholder-white/30 focus:outline-none focus:border-rose-glow"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] text-white/60">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => setPasswordInput('OnlyUs@2026!')}
+                      className="text-[10px] text-rose-glow hover:underline"
+                    >
+                      Use Default Password
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      placeholder="Enter password"
+                      required
+                      className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-white/5 border border-white/15 text-sm text-white placeholder-white/30 focus:outline-none focus:border-rose-glow"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  type="submit"
+                  disabled={authBusy}
+                  className="w-full py-3.5 rounded-2xl bg-love-gradient font-semibold text-white shadow-glow-pink flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+                >
+                  {authBusy ? 'Signing in…' : `Sign in as ${profiles[selectedRole].display_name}`}
+                </motion.button>
+              </form>
+            )}
+
+            {/* Email OTP Auth Form */}
+            {authMode === 'otp' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] text-white/60 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-sm text-white placeholder-white/30 focus:outline-none focus:border-rose-glow"
+                  />
+                </div>
+
+                {!otpSent ? (
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={authBusy}
+                    className="w-full py-3.5 rounded-2xl bg-love-gradient font-semibold text-white shadow-glow-pink flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+                  >
+                    {authBusy ? 'Sending Code…' : 'Send 6-Digit Login Code'}
+                  </motion.button>
+                ) : (
+                  <form onSubmit={handleVerifyOtp} className="space-y-3">
+                    <div>
+                      <label className="block text-[11px] text-white/60 mb-1">Enter 6-Digit Code</label>
+                      <input
+                        type="text"
+                        pattern="[0-9A-Za-z]{6}"
+                        maxLength={8}
+                        value={otpToken}
+                        onChange={(e) => setOtpToken(e.target.value)}
+                        placeholder="123456"
+                        required
+                        autoFocus
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-rose-glow text-center text-lg tracking-widest font-mono text-white focus:outline-none"
+                      />
+                    </div>
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      type="submit"
+                      disabled={authBusy}
+                      className="w-full py-3.5 rounded-2xl bg-love-gradient font-semibold text-white shadow-glow-pink flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {authBusy ? 'Verifying…' : 'Verify Code & Enter'}
+                    </motion.button>
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        className="text-[11px] text-white/60 hover:text-white underline"
+                      >
+                        Resend Code
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -218,8 +450,8 @@ export default function SplashAndOnboarding() {
                     type="button"
                     key={em}
                     onClick={() => setEmojiInput(em)}
-                    className={`h-10 w-10 rounded-xl text-xl flex items-center justify-center transition-all ${
-                      emojiInput === em ? 'bg-love-gradient shadow-glow-pink scale-110' : 'glass'
+                    className={`h-10 w-10 rounded-2xl text-xl flex items-center justify-center transition-transform ${
+                      emojiInput === em ? 'bg-white/20 scale-110 border border-rose-glow' : 'glass'
                     }`}
                   >
                     {em}
@@ -228,75 +460,57 @@ export default function SplashAndOnboarding() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-white/60 mb-1.5">Your Name</label>
-                <input
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  className="w-full rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2.5 text-sm outline-none focus:border-rose-glow"
-                  placeholder="Your name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-white/60 mb-1.5">Partner’s Name</label>
-                <input
-                  value={partnerNameInput}
-                  onChange={(e) => setPartnerNameInput(e.target.value)}
-                  className="w-full rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2.5 text-sm outline-none focus:border-rose-glow"
-                  placeholder="Partner's name"
-                />
-              </div>
-            </div>
-
             <div>
-              <label className="block text-xs text-white/60 mb-1.5">Bio</label>
-              <textarea
-                value={bioInput}
-                onChange={(e) => setBioInput(e.target.value)}
-                rows={2}
-                className="w-full rounded-2xl bg-white/5 border border-white/15 px-4 py-3 text-sm outline-none focus:border-rose-glow resize-none"
-                placeholder="A sweet bio..."
+              <label className="block text-xs text-white/60 mb-1.5">Your Display Name</label>
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                maxLength={24}
+                className="w-full px-4 py-3 rounded-2xl glass text-white focus:outline-none focus:border-rose-glow text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-white/60 mb-1.5">Private Pairing Code (share with partner)</label>
-              <div className="flex gap-2">
-                <input
-                  value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-                  className="flex-1 rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2.5 text-xs font-mono text-rose-soft outline-none focus:border-rose-glow"
-                  placeholder="ONLYUS-849210"
-                />
-                <button
-                  type="button"
-                  onClick={() => setCodeInput(`ONLYUS-${Math.floor(100000 + Math.random() * 900000)}`)}
-                  className="px-3 py-2 rounded-2xl glass text-xs text-white/80 shrink-0"
-                >
-                  New
-                </button>
-              </div>
+              <label className="block text-xs text-white/60 mb-1.5">Partner Display Name</label>
+              <input
+                type="text"
+                value={partnerNameInput}
+                onChange={(e) => setPartnerNameInput(e.target.value)}
+                maxLength={24}
+                className="w-full px-4 py-3 rounded-2xl glass text-white focus:outline-none focus:border-rose-glow text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-white/60 mb-1.5">Status / Bio</label>
+              <input
+                type="text"
+                value={bioInput}
+                onChange={(e) => setBioInput(e.target.value)}
+                maxLength={60}
+                className="w-full px-4 py-3 rounded-2xl glass text-white focus:outline-none focus:border-rose-glow text-sm"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-white/60 mb-1.5">Anniversary Date</label>
+                <label className="block text-xs text-white/60 mb-1.5">Anniversary</label>
                 <input
                   type="date"
                   value={anniversaryInput}
                   onChange={(e) => setAnniversaryInput(e.target.value)}
-                  className="w-full rounded-2xl bg-white/5 border border-white/15 px-3 py-2 text-xs outline-none focus:border-rose-glow"
+                  className="w-full px-3 py-2.5 rounded-2xl glass text-white text-xs focus:outline-none focus:border-rose-glow"
                 />
               </div>
+
               <div>
-                <label className="block text-xs text-white/60 mb-1.5">Accent Colour</label>
-                <div className="flex items-center gap-1.5 pt-1">
+                <label className="block text-xs text-white/60 mb-1.5">Accent Color</label>
+                <div className="flex gap-1.5 pt-1.5">
                   {ACCENT_COLORS.map((c) => (
                     <button
-                      key={c}
                       type="button"
+                      key={c}
                       onClick={() => setAccentInput(c)}
                       className={`h-7 w-7 rounded-full border-2 transition-transform ${
                         accentInput === c ? 'border-white scale-110' : 'border-transparent'

@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom';
 import AvatarBubble from '@/components/AvatarBubble';
 import TiltCard from '@/components/TiltCard';
 import { useAppStore } from '@/stores/useAppStore';
+import { useAuth } from '@/features/auth/authStore';
 import type { ChatThemeId, WallpaperId } from '@/types/models';
 
 const CHAT_THEMES: Array<{ id: ChatThemeId; label: string; colors: string }> = [
@@ -416,7 +417,10 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
             <RotateCcw className="h-3.5 w-3.5" /> Clear Local Cache
           </button>
           <button
-            onClick={signOutDemo}
+            onClick={() => {
+              signOutDemo();
+              void useAuth.getState().signOut();
+            }}
             className="flex-1 py-2.5 rounded-2xl bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center justify-center gap-1.5"
           >
             <LogOut className="h-3.5 w-3.5" /> Sign Out

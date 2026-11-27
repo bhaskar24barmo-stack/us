@@ -7,11 +7,11 @@ import type {
   StickerItem,
 } from '@/types/models';
 
-export const CONVERSATION_ID = 'onlyus-private-thread';
+export const CONVERSATION_ID = 'c09e5a25-d817-4563-9d92-25928d999b76';
 
 export const DEMO_PROFILES: Record<'me' | 'partner', Profile> = {
   me: {
-    id: 'user-me',
+    id: '4a28983c-da6f-4ffd-a948-decab3ce394f',
     role: 'me',
     display_name: 'Bhaskar',
     nickname: 'Bhu',
@@ -25,7 +25,7 @@ export const DEMO_PROFILES: Record<'me' | 'partner', Profile> = {
     birthday: '2001-08-14',
   },
   partner: {
-    id: 'user-partner',
+    id: 'bdd942c4-19c2-472d-8a4d-dc5b99895e5d',
     role: 'partner',
     display_name: 'Purvika',
     nickname: 'Puri',
