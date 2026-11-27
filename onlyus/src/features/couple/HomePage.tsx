@@ -283,6 +283,45 @@ export default function HomePage() {
         </div>
       </TiltCard>
 
+      {/* Partner Battery Care Alert */}
+      {partnerCare.battery !== null && partnerCare.battery <= 20 && !partnerCare.charging && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl bg-amber-500/15 border border-amber-400/40 p-3.5 flex items-center justify-between gap-3 shadow-glow-amber"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-9 w-9 rounded-full bg-amber-400/20 flex items-center justify-center shrink-0">
+              <Battery className="h-5 w-5 text-amber-400 animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-amber-200 truncate">
+                {partner.display_name}&apos;s battery is low ({partnerCare.battery}%)
+              </div>
+              <p className="text-[10px] text-white/70 truncate">
+                Remind her to plug in so you both stay connected
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              triggerHeartbeatHaptic();
+              playSoftChime('send');
+              useAppStore.getState().sendMessage({
+                kind: 'text',
+                body: `⚡ Hey sweetheart, your battery is at ${partnerCare.battery}%! Please charge your phone so we can keep talking ❤️`,
+              });
+              setPingSent(true);
+              setTimeout(() => setPingSent(false), 2000);
+            }}
+            className="shrink-0 px-3 py-1.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-ink-950 text-xs font-bold shadow-md shadow-amber-400/20 active:scale-95 transition-transform"
+          >
+            Remind ⚡
+          </button>
+        </motion.div>
+      )}
+
       {/* Heartbeat Touch Banner */}
       <button
         type="button"

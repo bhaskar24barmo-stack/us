@@ -36,6 +36,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CONVERSATION_ID, STICKER_CATALOG } from '@/data/demoData';
 import { uploadPrivateMedia } from '@/services/mediaStorage';
+import { playSoftChime, triggerHeartbeatHaptic } from '@/services/notifications';
 import AvatarBubble from '@/components/AvatarBubble';
 import LoveStormOverlay from '@/components/LoveStormOverlay';
 import SnapPeekingAvatar from '@/components/SnapPeekingAvatar';
@@ -468,49 +469,48 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
           <button
             type="button"
             onClick={() => {
-              const next = ttlSec === null ? 86400 : ttlSec === 86400 ? 604800 : null;
-              setTtlSec(next);
-              sendMessage({
-                kind: 'system',
-                body: next
-                  ? `Disappearing messages set to ${next === 86400 ? '24h' : '7d'}`
-                  : 'Disappearing messages turned off',
-              });
+              sendHeartbeat();
+              playSoftChime('whisper');
+              triggerHeartbeatHaptic();
+              setFloatingHeartKey((k) => k + 1);
             }}
-            aria-label="Toggle disappearing messages"
-            title="Disappearing messages"
-            className={`h-9 px-2 rounded-xl glass flex items-center justify-center gap-1 text-[11px] ${
-              ttlSec ? 'text-amber-300 border border-amber-400/35' : 'text-white/75 hover:text-white'
-            }`}
+            aria-label="Send Love Pulse"
+            title="Send an instant Heartbeat Pulse to partner"
+            className="h-9 w-9 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/30 flex items-center justify-center text-rose-soft transition-transform active:scale-90"
           >
-            <Timer className="h-3.5 w-3.5" />
-            {ttlSec ? <span>{ttlSec === 86400 ? '24h' : '7d'}</span> : null}
+            <HeartPulse className="h-4 w-4 text-rose-glow animate-pulse" />
           </button>
-          <button
-            onClick={() => setSearchOpen((v) => !v)}
-            aria-label="Search messages"
-            className="h-9 w-9 rounded-xl glass flex items-center justify-center text-white/75 hover:text-white"
-          >
-            <Search className="h-4 w-4" />
-          </button>
+
           <button
             onClick={() => startCall('voice')}
             aria-label="Voice call"
-            className="h-9 w-9 rounded-xl glass flex items-center justify-center text-white/75 hover:text-rose-glow"
+            title="Voice call"
+            className="h-9 w-9 rounded-full bg-white/10 hover:bg-emerald-500/20 text-white/85 hover:text-emerald-300 flex items-center justify-center transition-colors"
           >
             <Phone className="h-4 w-4" />
           </button>
+
           <button
             onClick={() => startCall('video')}
             aria-label="Video call"
-            className="h-9 w-9 rounded-xl glass flex items-center justify-center text-white/75 hover:text-violet-glow"
+            title="Video call"
+            className="h-9 w-9 rounded-full bg-white/10 hover:bg-violet-500/20 text-white/85 hover:text-violet-300 flex items-center justify-center transition-colors"
           >
             <Video className="h-4 w-4" />
           </button>
+
+          <button
+            onClick={() => setSearchOpen((v) => !v)}
+            aria-label="Search messages"
+            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/75 hover:text-white transition-colors"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+
           <button
             onClick={onOpenNotifications}
             aria-label="Notifications"
-            className="relative h-9 w-9 rounded-xl glass flex items-center justify-center text-white/75 hover:text-white"
+            className="relative h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/75 hover:text-white transition-colors"
           >
             <Bell className="h-4 w-4" />
             {unreadNotifs > 0 && (
@@ -1422,7 +1422,35 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
             onCancel={() => setRecordingVoice(false)}
           />
         ) : (
-          <form onSubmit={handleSend} className="glass-strong rounded-[28px] p-1.5 flex items-center gap-1.5 border border-white/15">
+          <div className="space-y-1.5">
+            {/* Snapchat Romantic Quick Reacts Pill Bar */}
+            <div className="flex items-center gap-1.5 px-1 overflow-x-auto no-scrollbar">
+              {[
+                { emoji: '❤️', label: 'Love' },
+                { emoji: '💋', label: 'Kiss' },
+                { emoji: '🔥', label: 'Fire' },
+                { emoji: '🥺', label: 'Miss You' },
+                { emoji: '✨', label: 'Magic' },
+                { emoji: '🫂', label: 'Hug' },
+              ].map((r) => (
+                <button
+                  key={r.label}
+                  type="button"
+                  onClick={() => {
+                    sendMessage({ kind: 'text', body: `${r.emoji} ${r.label}` });
+                    triggerHeartbeatHaptic();
+                    playSoftChime('send');
+                    setFloatingHeartKey((k) => k + 1);
+                  }}
+                  className="shrink-0 px-2.5 py-0.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-[11px] text-white/80 flex items-center gap-1 transition-all active:scale-95"
+                >
+                  <span>{r.emoji}</span>
+                  <span className="text-[10px] text-white/50">{r.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSend} className="glass-strong rounded-[28px] p-1.5 flex items-center gap-1.5 border border-white/15">
             <input
               ref={fileInputRef}
               type="file"
@@ -1530,6 +1558,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
               </button>
             )}
           </form>
+        </div>
         )}
       </div>
 

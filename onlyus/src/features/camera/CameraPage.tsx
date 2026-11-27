@@ -634,6 +634,15 @@ export default function CameraPage() {
                   drawMode ? 'pointer-events-auto cursor-crosshair' : 'pointer-events-none'
                 }`}
               />
+
+              {/* Snapchat Classic Translucent Caption Bar */}
+              {caption.trim() && (
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 py-2 px-4 bg-black/60 backdrop-blur-xs text-center pointer-events-none z-10">
+                  <p className="text-white font-semibold text-sm drop-shadow-md tracking-wide select-none">
+                    {caption}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Editor Top Bar */}

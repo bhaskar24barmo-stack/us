@@ -112,6 +112,17 @@ export async function initNotificationChannel(): Promise<void> {
       lights: true,
       lightColor: '#ff4d8d',
     });
+    await LocalNotifications.createChannel({
+      id: 'onlyus-calls',
+      name: 'ONLYUS Romantic Calls',
+      description: 'Incoming romantic audio and video calls',
+      importance: 5, // Maximum priority
+      visibility: 1,
+      sound: 'default',
+      vibration: true,
+      lights: true,
+      lightColor: '#ff4d8d',
+    });
   } catch {
     // Non-native fallback
   }
@@ -130,6 +141,44 @@ export async function requestBrowserNotificationPermission(): Promise<Notificati
   if (!('Notification' in window)) return 'unsupported';
   if (Notification.permission === 'granted') return 'granted';
   return await Notification.requestPermission();
+}
+
+export async function triggerCallNotification(partnerName: string, kind: 'voice' | 'video') {
+  try {
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== 'granted') {
+      await LocalNotifications.requestPermissions();
+    }
+    await initNotificationChannel();
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          title: `Incoming ${kind === 'video' ? 'Video' : 'Voice'} Call 📞`,
+          body: `${partnerName} is calling you right now! Tap to open ONLYUS ❤️`,
+          id: 8888,
+          channelId: 'onlyus-calls',
+          sound: 'default',
+          smallIcon: 'ic_launcher_round',
+          iconColor: '#ff4d8d',
+          actionTypeId: '',
+          extra: { kind },
+        },
+      ],
+    });
+  } catch {
+    triggerBrowserNotification(
+      `Incoming ${kind === 'video' ? 'Video' : 'Voice'} Call 📞`,
+      `${partnerName} is calling you! Tap to answer.`
+    );
+  }
+}
+
+export async function cancelCallNotification() {
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: 8888 }] });
+  } catch {
+    // Ignore error
+  }
 }
 
 export async function triggerDeviceNotification(title: string, body: string, id?: number) {

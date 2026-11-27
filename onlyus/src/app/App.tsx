@@ -13,7 +13,13 @@ import LockGate from '@/features/lock/LockGate';
 import MediaViewerModal from '@/features/media/MediaViewerModal';
 import NotificationCenter, { ToastStack } from '@/features/notifications/NotificationCenter';
 import { subscribeCallSignals } from '@/services/callSignaling';
-import { initNotificationChannel, playSoftChime } from '@/services/notifications';
+import {
+  cancelCallNotification,
+  initNotificationChannel,
+  playSoftChime,
+  triggerCallNotification,
+} from '@/services/notifications';
+import { registerAndroidFcmPush } from '@/features/native/capacitorBridge';
 import { useAppStore } from '@/stores/useAppStore';
 
 const ActiveCallOverlay = lazy(() => import('@/features/calls/ActiveCallOverlay'));
@@ -85,12 +91,17 @@ export default function App() {
   useEffect(() => {
     useAuth.getState().init();
     void initNotificationChannel();
+    void registerAndroidFcmPush((token) => {
+      console.log('Registered FCM Token:', token);
+    });
   }, []);
 
   useEffect(() => {
     if (!currentUserRole || !onboarded) return;
     return subscribeCallSignals(pairCode, currentUserRole, (signal) => {
       const state = useAppStore.getState();
+      const partner = state.profiles[currentUserRole === 'me' ? 'partner' : 'me'];
+
       if (signal.type === 'call:ring') {
         if (!state.activeCall) {
           useAppStore.setState({
@@ -105,14 +116,17 @@ export default function App() {
             },
           });
           if (state.settings.soundEffects) playSoftChime('ring');
+          void triggerCallNotification(partner.display_name, signal.kind);
         }
       } else if (signal.type === 'call:accept') {
+        void cancelCallNotification();
         if (state.activeCall?.id === signal.callId && state.activeCall.status === 'ringing') {
           useAppStore.setState({
             activeCall: { ...state.activeCall, status: 'active', startedAt: Date.now() },
           });
         }
       } else if (signal.type === 'call:decline' || signal.type === 'call:end') {
+        void cancelCallNotification();
         if (state.activeCall?.id === signal.callId) {
           useAppStore.setState({ activeCall: null });
         }
