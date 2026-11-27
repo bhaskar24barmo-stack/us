@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion';
-import { Home, Image, Menu, MessageCircleHeart, Phone } from 'lucide-react';
+import { Home, Image, Menu, MessageCircleHeart, Heart } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { useAppStore } from '@/stores/useAppStore';
 
 const TABS = [
   { path: '/home', label: 'Home', icon: Home },
   { path: '/chats', label: 'Chat', icon: MessageCircleHeart },
-  { path: '/gallery', label: 'Gallery', icon: Image },
-  { path: '/calls', label: 'Calls', icon: Phone },
+  { path: '/gallery', label: 'Memories', icon: Image },
+  { path: '/us', label: 'Us', icon: Heart },
   { path: '/more', label: 'More', icon: Menu },
 ];
 
@@ -30,20 +31,25 @@ export default function BottomNav() {
           const active =
             pathname === tab.path ||
             (tab.path === '/home' && pathname === '/') ||
+            (tab.path === '/gallery' && pathname === '/memories') ||
+            (tab.path === '/us' &&
+              (pathname === '/countdowns' ||
+                pathname === '/bucket-list' ||
+                pathname === '/journal')) ||
             (tab.path === '/more' &&
               (pathname === '/profile' ||
-                pathname === '/settings/security' ||
-                pathname === '/countdowns' ||
-                pathname === '/bucket-list' ||
-                pathname === '/journal'));
+                pathname === '/settings/security'));
           const Icon = tab.icon;
 
           return (
             <button
               key={tab.path}
-              onClick={() => navigate(tab.path)}
+              onClick={() => {
+                void Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+                navigate(tab.path);
+              }}
               aria-label={tab.label}
-              className="relative flex flex-col items-center justify-center px-3 py-1.5 rounded-2xl transition-colors"
+              className="relative flex flex-col items-center justify-center px-3.5 py-1.5 rounded-2xl transition-colors min-h-[44px] min-w-[44px]"
             >
               {active && (
                 <motion.span

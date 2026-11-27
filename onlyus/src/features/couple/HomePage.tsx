@@ -221,14 +221,34 @@ export default function HomePage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={celebrateStreak}
-          className="px-3 py-1.5 rounded-full glass border border-amber-400/30 flex items-center gap-1.5 text-xs font-semibold text-amber-200"
-        >
-          <Flame className="h-4 w-4 text-amber-400 fill-amber-400" />
-          <span>{world.streakDays}d streak</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => navigate('/calls')}
+            className="h-8 w-8 rounded-full glass flex items-center justify-center text-white/80 hover:text-white transition-colors"
+            title="Romantic Calls"
+            aria-label="Calls"
+          >
+            <Phone className="h-4 w-4 text-emerald-400" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/camera')}
+            className="h-8 w-8 rounded-full glass flex items-center justify-center text-white/80 hover:text-white transition-colors"
+            title="Couple Snaps"
+            aria-label="Camera"
+          >
+            <Camera className="h-4 w-4 text-rose-glow" />
+          </button>
+          <button
+            type="button"
+            onClick={celebrateStreak}
+            className="px-2.5 py-1.5 rounded-full glass border border-amber-400/30 flex items-center gap-1 text-xs font-semibold text-amber-200"
+          >
+            <Flame className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+            <span>{world.streakDays}d</span>
+          </button>
+        </div>
       </div>
 
       {/* Days Together Hero Card */}

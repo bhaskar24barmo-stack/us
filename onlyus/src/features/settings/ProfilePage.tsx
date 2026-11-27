@@ -4,7 +4,6 @@ import {
   Download,
   Lock,
   LogOut,
-  Moon,
   Palette,
   RotateCcw,
   Shield,
@@ -239,8 +238,23 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
               />
               <button
                 type="button"
+                onClick={() =>
+                  updateProfile(role, {
+                    avatar_path: role === 'me' ? '/avatars/bhaskar.png' : '/avatars/purvika.png',
+                  })
+                }
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  me.avatar_path?.includes(role === 'me' ? 'bhaskar' : 'purvika')
+                    ? 'bg-love-gradient text-white shadow-glow-pink'
+                    : 'bg-white/10 hover:bg-white/15 text-white/90 border border-white/15'
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-rose-soft" /> 3D Avatar
+              </button>
+              <button
+                type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="px-3 py-1.5 rounded-full bg-love-gradient text-xs font-semibold text-white shadow-glow-pink flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-semibold text-white flex items-center gap-1.5"
               >
                 <Upload className="h-3.5 w-3.5" /> Upload Photo
               </button>
@@ -320,17 +334,41 @@ export default function ProfilePage({ onOpenNotifications }: { onOpenNotificatio
 
       {/* Theme & Wallpaper */}
       <div className="glass rounded-3xl p-4 space-y-3.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold flex items-center gap-2">
-            {settings.themeMode === 'dark' ? <Moon className="h-4 w-4 text-violet-glow" /> : <Sun className="h-4 w-4 text-amber-400" />}
-            Appearance Mode
-          </span>
-          <button
-            onClick={() => updateSettings({ themeMode: settings.themeMode === 'dark' ? 'light' : 'dark' })}
-            className="px-3 py-1 rounded-full glass text-xs"
-          >
-            {settings.themeMode === 'dark' ? 'Dark Mode' : 'Light Mode'}
-          </button>
+        <div>
+          <div className="text-xs font-semibold flex items-center justify-between mb-2">
+            <span className="flex items-center gap-2">
+              <Sun className="h-4 w-4 text-amber-400" /> Theme Mode
+            </span>
+            <span className="text-[10px] text-white/50 uppercase tracking-wider">
+              {settings.themeMode === 'cream' ? 'Warm Cream' : settings.themeMode === 'auto' ? 'System Auto' : 'Midnight Dark'}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-white/5 border border-white/10">
+            {(
+              [
+                { id: 'dark', label: 'Dark', icon: '🌙' },
+                { id: 'cream', label: 'Warm Cream', icon: '🍦' },
+                { id: 'auto', label: 'Auto', icon: '📱' },
+              ] as const
+            ).map((t) => {
+              const active = (settings.themeMode ?? 'dark') === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => updateSettings({ themeMode: t.id })}
+                  className={`py-2 px-1 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                    active
+                      ? 'bg-love-gradient text-white shadow-glow-pink'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span>{t.icon}</span>
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div>

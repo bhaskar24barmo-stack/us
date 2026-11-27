@@ -37,6 +37,7 @@ const GalleryPage = lazy(() => import('@/features/gallery/GalleryPage'));
 const MorePage = lazy(() => import('@/features/settings/MorePage'));
 const ProfilePage = lazy(() => import('@/features/settings/ProfilePage'));
 const SecuritySettings = lazy(() => import('@/features/settings/SecuritySettings'));
+const UsHubPage = lazy(() => import('@/features/couple/UsHubPage'));
 const CountdownsPage = lazy(() => import('@/features/couple/CountdownsPage'));
 const BucketListPage = lazy(() => import('@/features/couple/BucketListPage'));
 const JournalPage = lazy(() => import('@/features/couple/JournalPage'));
@@ -70,7 +71,7 @@ function AppRoutes({ onOpenNotifications }: { onOpenNotifications: () => void })
               <Route path="/gallery" element={<GalleryPage />} />
               <Route path="/more" element={<MorePage onOpenNotifications={onOpenNotifications} />} />
               <Route path="/memories" element={<Navigate to="/gallery" replace />} />
-              <Route path="/us" element={<Navigate to="/home" replace />} />
+              <Route path="/us" element={<UsHubPage />} />
               <Route path="/profile" element={<ProfilePage onOpenNotifications={onOpenNotifications} />} />
               <Route path="/settings/security" element={<SecuritySettings />} />
               <Route path="/countdowns" element={<CountdownsPage />} />
@@ -92,6 +93,30 @@ function AppRoutes({ onOpenNotifications }: { onOpenNotifications: () => void })
 export default function App() {
   const { currentUserRole, onboarded, pairCode, settings } = useAppStore();
   const [notifOpen, setNotifOpen] = useState(false);
+
+  useEffect(() => {
+    const applyTheme = () => {
+      const mode = settings.themeMode ?? 'dark';
+      let resolved = mode;
+      if (mode === 'auto') {
+        const prefersDark =
+          window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        resolved = prefersDark ? 'dark' : 'cream';
+      } else if (mode === 'light') {
+        resolved = 'cream';
+      }
+      document.documentElement.setAttribute('data-theme', resolved);
+    };
+
+    applyTheme();
+
+    if (settings.themeMode === 'auto' && window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => applyTheme();
+      mq.addEventListener('change', listener);
+      return () => mq.removeEventListener('change', listener);
+    }
+  }, [settings.themeMode]);
 
   useEffect(() => {
     useAuth.getState().init();

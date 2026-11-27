@@ -200,7 +200,7 @@ export interface CoupleWorldState {
 }
 
 export interface AppSettings {
-  themeMode: 'dark' | 'light';
+  themeMode: 'dark' | 'cream' | 'auto' | 'light';
   chatTheme: ChatThemeId;
   wallpaper: WallpaperId;
   soundEffects: boolean;

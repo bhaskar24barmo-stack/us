@@ -91,11 +91,31 @@ function loadInitial(): PersistedSlice {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<PersistedSlice>;
+      const loadedProfiles = parsed.profiles ?? DEMO_PROFILES;
+      const resolvedProfiles: Record<UserRole, Profile> = {
+        me: {
+          ...DEMO_PROFILES.me,
+          ...loadedProfiles.me,
+          avatar_path:
+            loadedProfiles.me?.avatar_path && !loadedProfiles.me.avatar_path.endsWith('.jpg')
+              ? loadedProfiles.me.avatar_path
+              : '/avatars/bhaskar.png',
+        },
+        partner: {
+          ...DEMO_PROFILES.partner,
+          ...loadedProfiles.partner,
+          avatar_path:
+            loadedProfiles.partner?.avatar_path && !loadedProfiles.partner.avatar_path.endsWith('.jpg')
+              ? loadedProfiles.partner.avatar_path
+              : '/avatars/purvika.png',
+        },
+      };
+
       return {
         currentUserRole: parsed.currentUserRole ?? null,
         onboarded: parsed.onboarded ?? false,
         pairCode: parsed.pairCode ?? 'ONLYUS-849210',
-        profiles: parsed.profiles ?? DEMO_PROFILES,
+        profiles: resolvedProfiles,
         messages: parsed.messages ?? DEMO_MESSAGES,
         calls: parsed.calls ?? DEMO_CALLS,
         notifications: parsed.notifications ?? DEMO_NOTIFICATIONS,
