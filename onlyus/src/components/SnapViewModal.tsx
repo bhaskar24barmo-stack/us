@@ -25,7 +25,9 @@ export default function SnapViewModal({
 
   useEffect(() => {
     if (!snap) return;
-    setSecondsLeft(10);
+    const timerId = setTimeout(() => {
+      setSecondsLeft(10);
+    }, 0);
 
     const interval = setInterval(() => {
       setSecondsLeft((s) => {
@@ -38,7 +40,10 @@ export default function SnapViewModal({
       });
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timerId);
+      clearInterval(interval);
+    };
   }, [snap, onClose]);
 
   if (!snap || !snap.media) return null;
