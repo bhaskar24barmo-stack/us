@@ -100,6 +100,8 @@ export interface Message {
   delivered_at: string | null;
   read_at: string | null;
   expires_at: string | null;
+  status?: 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  lastError?: string;
   created_at: string;
 }
 

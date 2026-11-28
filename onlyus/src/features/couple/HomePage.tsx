@@ -19,6 +19,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AvatarBubble from '@/components/AvatarBubble';
 import HeartbeatTouchModal from '@/components/HeartbeatTouchModal';
+import LoveStormOverlay from '@/components/LoveStormOverlay';
+import WhatsNewSheet from '@/components/WhatsNewSheet';
 import TiltCard from '@/components/TiltCard';
 import { Button } from '@/design-system/Button';
 import { COPY } from '@/copy';
@@ -171,12 +173,26 @@ export default function HomePage() {
     [messages, world.memories]
   );
 
+  const [missingBurstKey, setMissingBurstKey] = useState(0);
+
   function handleThinkingOfYou() {
     sendHeartbeat();
     playSoftChime('whisper');
     triggerHeartbeatHaptic();
     setPingSent(true);
     setTimeout(() => setPingSent(false), 2200);
+  }
+
+  function handleMissingYou() {
+    setMissingBurstKey((k) => k + 1);
+    playSoftChime('send');
+    triggerHeartbeatHaptic();
+    useAppStore.getState().sendMessage({
+      kind: 'love_note',
+      body: `🥺 Thinking of you right now — I miss you so much 💕`,
+    });
+    setPingSent(true);
+    setTimeout(() => setPingSent(false), 2400);
   }
 
   async function handleSaveDailyAnswer(e: React.FormEvent) {
@@ -266,15 +282,25 @@ export default function HomePage() {
             </p>
           </div>
 
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            type="button"
-            onClick={handleThinkingOfYou}
-            className="px-4 py-2.5 rounded-2xl bg-love-gradient text-white text-xs font-semibold flex items-center gap-1.5 shadow-glow-pink"
-          >
-            <Heart className="h-4 w-4 fill-white" />
-            {pingSent ? 'Sent to her ❤️' : 'Thinking of You'}
-          </motion.button>
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              type="button"
+              onClick={handleMissingYou}
+              className="px-3.5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-semibold flex items-center gap-1.5 transition-all min-h-[44px]"
+            >
+              <span>🥺</span> Miss You
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              type="button"
+              onClick={handleThinkingOfYou}
+              className="px-4 py-2.5 rounded-2xl bg-love-gradient text-white text-xs font-semibold flex items-center gap-1.5 shadow-glow-pink min-h-[44px]"
+            >
+              <Heart className="h-4 w-4 fill-white" />
+              {pingSent ? 'Sent ❤️' : 'Thinking of You'}
+            </motion.button>
+          </div>
         </div>
 
         {/* Partner Mood & Battery Care Status */}
@@ -532,6 +558,12 @@ export default function HomePage() {
 
       {/* Heartbeat Touch Modal */}
       <HeartbeatTouchModal open={touchModalOpen} onClose={() => setTouchModalOpen(false)} />
+
+      {/* Floating Love Storm Burst */}
+      <LoveStormOverlay burstKey={missingBurstKey} />
+
+      {/* Welcome to v2 What's New Sheet */}
+      <WhatsNewSheet />
     </div>
   );
 }

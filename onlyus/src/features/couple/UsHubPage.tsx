@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CalendarHeart, CheckSquare, BookHeart, Sparkles, Heart, Clock } from 'lucide-react';
+import { CalendarHeart, CheckSquare, BookHeart, Sparkles, Heart, Clock, Calendar, StickyNote } from 'lucide-react';
 import { Card } from '@/design-system/Card';
 import { useAppStore } from '@/stores/useAppStore';
 import { COPY } from '@/copy';
@@ -143,6 +143,42 @@ export default function UsHubPage() {
           <div>
             <div className="text-sm font-bold text-white">Memories</div>
             <div className="text-[11px] text-white/60">Photos & moments</div>
+          </div>
+        </Card>
+
+        {/* Date Planner */}
+        <Card
+          interactive
+          onClick={() => navigate('/dates')}
+          className="cursor-pointer space-y-2 flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-9 rounded-2xl bg-pink-500/20 text-rose-300 flex items-center justify-center">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <span className="text-[11px] font-semibold text-white/50">Curate</span>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-white">Date Planner</div>
+            <div className="text-[11px] text-white/60">Romantic outings</div>
+          </div>
+        </Card>
+
+        {/* Shared Notes */}
+        <Card
+          interactive
+          onClick={() => navigate('/notes')}
+          className="cursor-pointer space-y-2 flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-9 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center">
+              <StickyNote className="h-5 w-5" />
+            </div>
+            <span className="text-[11px] font-semibold text-white/50">Lists</span>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-white">Shared Notes</div>
+            <div className="text-[11px] text-white/60">Lists & secret ideas</div>
           </div>
         </Card>
       </div>

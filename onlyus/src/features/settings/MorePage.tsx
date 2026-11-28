@@ -1,4 +1,5 @@
 import {
+  Archive,
   Bell,
   Bug,
   Camera,
@@ -6,6 +7,7 @@ import {
   ChevronRight,
   Lock,
   NotebookPen,
+  Sparkles,
   Timer,
   User,
 } from 'lucide-react';
@@ -14,12 +16,27 @@ import { Link } from 'react-router-dom';
 import AvatarBubble from '@/components/AvatarBubble';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useAppStore } from '@/stores/useAppStore';
+import { exportCoupleDataToZip } from '@/services/backupExport';
+import WhatsNewSheet from '@/components/WhatsNewSheet';
 
 export default function MorePage({ onOpenNotifications }: { onOpenNotifications: () => void }) {
   const { currentUserRole, profiles, settings, messages, calls } = useAppStore();
   const role = currentUserRole ?? 'me';
   const me = profiles[role];
   const [diagCopied, setDiagCopied] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+
+  async function handleExport() {
+    setIsExporting(true);
+    try {
+      await exportCoupleDataToZip(useAppStore.getState());
+    } catch (err) {
+      console.warn('Export failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   function copyDiagnosticReport() {
     const bundle = {
@@ -116,6 +133,19 @@ export default function MorePage({ onOpenNotifications }: { onOpenNotifications:
           </Link>
           <button
             type="button"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="w-full px-4 py-3.5 flex items-center justify-between text-sm hover:bg-white/5 text-left disabled:opacity-50"
+          >
+            <span className="flex items-center gap-3">
+              <Archive className="h-4 w-4 text-pink-400" /> Backup &amp; Export Data (ZIP)
+            </span>
+            <span className="text-xs text-rose-soft font-medium">
+              {isExporting ? 'Packaging...' : 'Export'}
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={copyDiagnosticReport}
             className="w-full px-4 py-3.5 flex items-center justify-between text-sm hover:bg-white/5 text-left"
           >
@@ -124,8 +154,20 @@ export default function MorePage({ onOpenNotifications }: { onOpenNotifications:
             </span>
             <span className="text-xs text-rose-soft">{diagCopied ? 'Copied ✓' : ''}</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setTourOpen(true)}
+            className="w-full px-4 py-3.5 flex items-center justify-between text-sm hover:bg-white/5 text-left"
+          >
+            <span className="flex items-center gap-3">
+              <Sparkles className="h-4 w-4 text-rose-glow" /> What&apos;s New in ONLYUS v2
+            </span>
+            <ChevronRight className="h-4 w-4 text-white/40" />
+          </button>
         </div>
       </div>
+
+      <WhatsNewSheet forceOpen={tourOpen} onClose={() => setTourOpen(false)} />
     </div>
   );
 }

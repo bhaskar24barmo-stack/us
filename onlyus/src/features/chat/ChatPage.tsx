@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  AlertCircle,
   ArrowDown,
   BarChart2,
   Bell,
@@ -8,6 +9,7 @@ import {
   Camera,
   Check,
   ChevronLeft,
+  Clock,
   Copy,
   Edit3,
   EyeOff,
@@ -15,6 +17,7 @@ import {
   Heart,
   HeartPulse,
   ImagePlus,
+  Loader2,
   Mic,
   Music,
   Phone,
@@ -118,6 +121,7 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
     openMediaViewer,
     startCall,
     syncRemoteMessages,
+    retryOutboxMessage,
     world,
   } = useAppStore();
 
@@ -858,15 +862,38 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
                         {msg.edited_at && <span>edited</span>}
                         <span>{formatTime(msg.created_at)}</span>
                         {isMe && (
-                          <span className="flex items-center gap-0.5 font-semibold text-[10px] text-sky-300">
-                            {msg.read_at ? (
-                              <>
+                          <span className="flex items-center gap-1 font-semibold text-[10px]">
+                            {msg.status === 'failed' ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void retryOutboxMessage(msg.client_id);
+                                }}
+                                className="flex items-center gap-1 text-rose-400 hover:text-rose-300 active:scale-95 transition-transform underline underline-offset-2 min-h-[24px]"
+                                title="Tap to retry sending message"
+                              >
+                                <AlertCircle className="h-3 w-3 text-rose-400 animate-pulse" />
+                                {COPY.outbox.failed}
+                              </button>
+                            ) : msg.status === 'sending' ? (
+                              <span className="flex items-center gap-1 text-amber-300/90">
+                                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                {COPY.outbox.sending}
+                              </span>
+                            ) : msg.status === 'queued' ? (
+                              <span className="flex items-center gap-1 text-white/50">
+                                <Clock className="h-2.5 w-2.5" />
+                                {COPY.outbox.queued}
+                              </span>
+                            ) : msg.read_at ? (
+                              <span className="flex items-center gap-0.5 text-sky-300">
                                 <span className="inline-block text-[11px] leading-none">▷</span> Opened
-                              </>
+                              </span>
                             ) : (
-                              <>
+                              <span className="flex items-center gap-0.5 text-sky-300/80">
                                 <span className="inline-block text-[11px] leading-none">▶</span> Delivered
-                              </>
+                              </span>
                             )}
                           </span>
                         )}

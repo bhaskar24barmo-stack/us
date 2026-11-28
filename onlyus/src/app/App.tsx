@@ -42,6 +42,8 @@ const UsHubPage = lazy(() => import('@/features/couple/UsHubPage'));
 const CountdownsPage = lazy(() => import('@/features/couple/CountdownsPage'));
 const BucketListPage = lazy(() => import('@/features/couple/BucketListPage'));
 const JournalPage = lazy(() => import('@/features/couple/JournalPage'));
+const DatePlannerPage = lazy(() => import('@/features/couple/DatePlannerPage'));
+const SharedNotesPage = lazy(() => import('@/features/couple/SharedNotesPage'));
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'));
 const ForgotPasswordPage = lazy(() => import('@/features/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('@/features/auth/ResetPasswordPage'));
@@ -78,6 +80,8 @@ function AppRoutes({ onOpenNotifications }: { onOpenNotifications: () => void })
               <Route path="/countdowns" element={<CountdownsPage />} />
               <Route path="/bucket-list" element={<BucketListPage />} />
               <Route path="/journal" element={<JournalPage />} />
+              <Route path="/dates" element={<DatePlannerPage />} />
+              <Route path="/notes" element={<SharedNotesPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot" element={<ForgotPasswordPage />} />
               <Route path="/reset" element={<ResetPasswordPage />} />

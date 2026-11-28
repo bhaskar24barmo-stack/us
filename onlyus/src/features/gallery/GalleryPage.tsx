@@ -73,6 +73,20 @@ export default function GalleryPage() {
     return allItems.find((item) => item.type === 'image' && item.favorite) || allItems.find((item) => item.type === 'image') || null;
   }, [allItems]);
 
+  // On This Day throwback memory
+  const onThisDayItem = useMemo(() => {
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const day = today.getDate();
+    return (
+      allItems.find((item) => {
+        if (!item.date || item.date === todayStr) return false;
+        const itemDate = new Date(item.date);
+        return itemDate.getDate() === day;
+      }) || (allItems.length > 2 ? allItems[allItems.length - 1] : null)
+    );
+  }, [allItems]);
+
   const groupedByDate = useMemo(() => {
     const groups = new Map<string, typeof allItems>();
     for (const item of allItems) {
@@ -135,6 +149,36 @@ export default function GalleryPage() {
           </button>
         </div>
       </div>
+
+      {/* On This Day Throwback Card */}
+      {onThisDayItem && !query && filter === 'all' && (
+        <Card
+          variant="glow"
+          interactive
+          onClick={() => {
+            if (onThisDayItem.messageId) openMediaViewer(onThisDayItem.messageId);
+          }}
+          className="p-3 bg-gradient-to-r from-violet-600/20 via-pink-600/20 to-rose-600/20 border-rose-500/30 flex items-center gap-3 cursor-pointer"
+        >
+          <div className="h-12 w-12 rounded-xl overflow-hidden shrink-0 border border-white/20">
+            {onThisDayItem.type === 'video' ? (
+              <video src={onThisDayItem.url} className="h-full w-full object-cover" />
+            ) : (
+              <img src={onThisDayItem.url} alt="" className="h-full w-full object-cover" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-rose-soft flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-rose-glow" /> On This Day
+            </div>
+            <div className="text-xs font-bold text-white truncate">{onThisDayItem.title}</div>
+            <div className="text-[10px] text-white/60">
+              {new Date(onThisDayItem.date).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}
+            </div>
+          </div>
+          <span className="text-xs text-rose-soft font-semibold shrink-0">Relive 💕</span>
+        </Card>
+      )}
 
       {/* Photo of the Day Hero Banner */}
       {photoOfTheDay && !query && filter === 'all' && (

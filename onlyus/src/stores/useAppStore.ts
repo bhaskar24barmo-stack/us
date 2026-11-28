@@ -15,7 +15,8 @@ import {
   triggerHeartbeatHaptic,
 } from '@/services/notifications';
 import { applyThemeToDocument } from '@/design-system/tokens';
-import { fetchConversationMessages } from '@/services/chatSync';
+import { fetchConversationMessages, sendOutboxMessageToSupabase } from '@/services/chatSync';
+import { subscribeOutbox, retryOutboxItem } from '@/features/chat/outbox';
 import type {
   AppNotification,
   AppSettings,
@@ -154,7 +155,7 @@ function persist(slice: PersistedSlice) {
   }
 }
 
-interface AppStore extends PersistedSlice {
+export interface AppStore extends PersistedSlice {
   partnerTyping: boolean;
   activeCall: ActiveCallSession | null;
   toasts: InAppToast[];
@@ -192,6 +193,7 @@ interface AppStore extends PersistedSlice {
   sendHeartbeat: () => void;
   editMessage: (id: string, body: string) => void;
   deleteMessage: (id: string) => void;
+  retryOutboxMessage: (clientId: string) => Promise<void>;
   toggleReaction: (messageId: string, emoji: string) => void;
   togglePin: (messageId: string) => void;
   toggleSaveInChat: (messageId: string) => void;
@@ -277,6 +279,21 @@ export const useAppStore = create<AppStore>((set, get) => {
     };
     persist(merged);
   };
+
+  subscribeOutbox((clientId, status, error) => {
+    const msgs = get().messages.map((m) =>
+      m.client_id === clientId
+        ? {
+            ...m,
+            status,
+            lastError: error,
+            delivered_at: status === 'sent' && !m.delivered_at ? new Date().toISOString() : m.delivered_at,
+          }
+        : m
+    );
+    set({ messages: msgs });
+    sync({ messages: msgs });
+  });
 
   return {
     ...initial,
@@ -392,6 +409,7 @@ export const useAppStore = create<AppStore>((set, get) => {
       const sender = get().profiles[role];
       const nowMs = Date.now();
       const now = new Date(nowMs).toISOString();
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
       const msg: Message = {
         id: `msg-${nowMs}-${Math.random().toString(36).slice(2, 6)}`,
         conversation_id: CONVERSATION_ID,
@@ -412,8 +430,9 @@ export const useAppStore = create<AppStore>((set, get) => {
         edited_at: null,
         deleted_at: null,
         pinned_at: null,
-        delivered_at: now,
+        delivered_at: isOffline ? null : now,
         read_at: null,
+        status: isOffline ? 'queued' : 'sending',
         expires_at: ttlSec ? new Date(nowMs + ttlSec * 1000).toISOString() : null,
         created_at: now,
       };
@@ -488,6 +507,10 @@ export const useAppStore = create<AppStore>((set, get) => {
       );
       set({ messages });
       sync({ messages });
+    },
+
+    async retryOutboxMessage(clientId) {
+      await retryOutboxItem(clientId, sendOutboxMessageToSupabase);
     },
 
     toggleReaction(messageId, emoji) {
