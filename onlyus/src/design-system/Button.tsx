@@ -34,11 +34,11 @@ export function Button({
     primary:
       'bg-love-gradient text-white shadow-glow-pink hover:brightness-105 active:brightness-95',
     secondary:
-      'glass hover:bg-white/10 active:bg-white/15 text-white/90 border border-white/15',
+      'glass hover:bg-white/10 active:bg-white/15 text-[var(--text-primary)] border border-[var(--glass-border)]',
     ghost:
-      'bg-transparent hover:bg-white/5 active:bg-white/10 text-white/80',
+      'bg-transparent hover:bg-white/5 active:bg-white/10 text-[var(--text-primary)] opacity-85 hover:opacity-100',
     danger:
-      'bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30',
+      'bg-rose-500/15 text-[var(--text-danger)] border border-rose-500/35 hover:bg-rose-500/25',
   }[variant];
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -60,7 +60,7 @@ export function Button({
     >
       {loading ? (
         <span className="flex items-center gap-2">
-          <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+          <span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
           <span>Please wait...</span>
         </span>
       ) : (

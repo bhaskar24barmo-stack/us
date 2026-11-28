@@ -48,6 +48,8 @@ import StickerPicker from '@/features/stickers/StickerPicker';
 import { ANIMATED_GIF_CATALOG } from '@/services/gifs';
 import { flushOutbox, enqueueOutbox } from '@/features/chat/outbox';
 import { sendOutboxMessageToSupabase } from '@/services/chatSync';
+import { EmptyState } from '@/design-system/EmptyState';
+import { COPY } from '@/copy';
 import { formatWhatsAppLastSeen, OpenPresenceClient } from '@/services/presence';
 import { useAppStore } from '@/stores/useAppStore';
 import type { Message } from '@/types/models';
@@ -545,16 +547,20 @@ export default function ChatPage({ onOpenNotifications }: { onOpenNotifications:
         className="flex-1 overflow-y-auto px-3.5 py-3 space-y-2.5 no-scrollbar relative"
       >
         {filteredMessages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center px-6 py-12 space-y-2">
-            <div className="text-4xl">🔍</div>
-            <p className="text-sm font-medium">
-              {searchQuery ? `No messages matching "${searchQuery}"` : 'No messages yet'}
-            </p>
-            <p className="text-xs text-white/55">
-              {searchQuery
-                ? 'Try searching for another word or clear the filter.'
-                : `Send your first sweet note to ${partner.display_name}.`}
-            </p>
+          <div className="h-full flex items-center justify-center p-6">
+            <EmptyState
+              icon={searchQuery ? '🔍' : '💌'}
+              title={searchQuery ? COPY.chat.searchEmptyTitle(searchQuery) : COPY.chat.emptyTitle}
+              description={searchQuery ? COPY.chat.searchEmptyDesc : COPY.chat.emptyDescForPartner(partner.display_name)}
+              actionLabel={searchQuery ? COPY.actions.clear : COPY.chat.emptyAction}
+              onAction={() => {
+                if (searchQuery) {
+                  setSearchQuery('');
+                } else {
+                  setText('Thinking of you ❤️');
+                }
+              }}
+            />
           </div>
         ) : (
           filteredMessages.map((msg, idx) => {

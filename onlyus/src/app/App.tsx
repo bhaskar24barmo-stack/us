@@ -25,6 +25,7 @@ import {
 import { CONVERSATION_ID } from '@/data/demoData';
 import { supabase } from '@/lib/supabase';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { applyThemeToDocument } from '@/design-system/tokens';
 import { useAppStore } from '@/stores/useAppStore';
 
 const ActiveCallOverlay = lazy(() => import('@/features/calls/ActiveCallOverlay'));
@@ -95,26 +96,22 @@ export default function App() {
   const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
-    const applyTheme = () => {
-      const mode = settings.themeMode ?? 'dark';
-      let resolved = mode;
-      if (mode === 'auto') {
-        const prefersDark =
-          window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        resolved = prefersDark ? 'dark' : 'cream';
-      } else if (mode === 'light') {
-        resolved = 'cream';
-      }
-      document.documentElement.setAttribute('data-theme', resolved);
+    const mode = settings.themeMode ?? 'dark';
+    const syncTheme = () => {
+      applyThemeToDocument(mode);
     };
 
-    applyTheme();
+    syncTheme();
 
-    if (settings.themeMode === 'auto' && window.matchMedia) {
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      const listener = () => applyTheme();
-      mq.addEventListener('change', listener);
-      return () => mq.removeEventListener('change', listener);
+    if (mode === 'auto' && typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
+      const lightMq = window.matchMedia('(prefers-color-scheme: light)');
+      darkMq?.addEventListener?.('change', syncTheme);
+      lightMq?.addEventListener?.('change', syncTheme);
+      return () => {
+        darkMq?.removeEventListener?.('change', syncTheme);
+        lightMq?.removeEventListener?.('change', syncTheme);
+      };
     }
   }, [settings.themeMode]);
 
@@ -226,9 +223,9 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={settings.reducedMotionOverride ? 'always' : 'user'}>
       <BrowserRouter>
-        <div className="h-full w-full flex items-center justify-center bg-[#040208] md:p-3">
+        <div className="h-full w-full flex items-center justify-center bg-[var(--bg-outer)] md:p-3">
           <div
-            className={`relative h-full w-full max-w-[430px] md:h-[min(900px,calc(100dvh-1.5rem))] md:rounded-[40px] md:border md:border-white/15 md:shadow-[0_28px_90px_rgba(0,0,0,0.85)] overflow-hidden md:transform-gpu ${wallpaperBg}`}
+            className={`relative h-full w-full max-w-[430px] md:h-[min(900px,calc(100dvh-1.5rem))] md:rounded-[40px] md:border md:border-[var(--glass-border)] md:shadow-[0_28px_90px_rgba(0,0,0,0.85)] overflow-hidden md:transform-gpu ${wallpaperBg}`}
           >
             {!currentUserRole || !onboarded ? (
               <SplashAndOnboarding />

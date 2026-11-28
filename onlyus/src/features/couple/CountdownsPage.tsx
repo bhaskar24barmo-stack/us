@@ -1,6 +1,10 @@
 import { ArrowLeft, Plus, Timer, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Card } from '@/design-system/Card';
+import { Button } from '@/design-system/Button';
+import { EmptyState } from '@/design-system/EmptyState';
+import { COPY } from '@/copy';
 import { CONVERSATION_ID } from '@/data/demoData';
 import { supabase } from '@/lib/supabase';
 import { playSoftChime, triggerHeartbeatHaptic } from '@/services/notifications';
@@ -155,83 +159,97 @@ export default function CountdownsPage() {
           type="button"
           onClick={() => navigate(-1)}
           aria-label="Back"
-          className="h-9 w-9 rounded-xl glass flex items-center justify-center"
+          className="min-h-[44px] min-w-[44px] h-11 w-11 rounded-2xl glass flex items-center justify-center text-white/70 hover:text-white transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Countdowns</h1>
+          <h1 className="text-xl font-bold bg-love-gradient bg-clip-text text-transparent">
+            {COPY.countdowns.title}
+          </h1>
           <p className="text-xs text-white/55">Anniversaries, trips &amp; special days</p>
         </div>
       </div>
 
       {/* Anniversary Card */}
-      <div className="glass rounded-3xl p-4 border border-rose-glow/30 bg-love-gradient-soft flex items-center justify-between">
+      <Card variant="glow" className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-2xl">💍</span>
           <div>
-            <div className="text-sm font-semibold">Our Anniversary</div>
+            <div className="text-sm font-semibold">{COPY.home.anniversary}</div>
             <div className="text-xs text-white/65">{world.anniversaryDate}</div>
           </div>
         </div>
         <Timer className="h-5 w-5 text-rose-glow" />
-      </div>
+      </Card>
 
-      <form onSubmit={addItem} className="glass rounded-3xl p-4 space-y-2.5 border border-white/10">
-        <div className="flex gap-2">
-          <input
-            value={emoji}
-            onChange={(e) => setEmoji(e.target.value.slice(0, 4))}
-            className="w-12 text-center rounded-xl bg-white/5 border border-white/15 py-2 text-sm outline-none"
-          />
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Birthday, trip, date night…"
-            className="flex-1 rounded-xl bg-white/5 border border-white/15 px-3 py-2 text-xs outline-none focus:border-rose-glow"
-          />
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="flex-1 rounded-xl bg-white/5 border border-white/15 px-3 py-2 text-xs outline-none"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-xl bg-love-gradient text-xs font-semibold flex items-center gap-1"
-          >
-            <Plus className="h-3.5 w-3.5" /> Add
-          </button>
-        </div>
-      </form>
+      <Card variant="glass" className="p-4 space-y-2.5">
+        <form onSubmit={addItem} className="space-y-2.5">
+          <div className="flex gap-2">
+            <input
+              value={emoji}
+              onChange={(e) => setEmoji(e.target.value.slice(0, 4))}
+              className="w-14 text-center rounded-2xl bg-white/5 border border-white/15 py-2.5 text-base outline-none"
+            />
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Birthday, trip, date night…"
+              className="flex-1 rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2.5 text-xs outline-none focus:border-rose-glow text-white"
+            />
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="flex-1 rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2 text-xs outline-none text-white"
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              className="flex items-center gap-1 text-xs shadow-glow-pink"
+            >
+              <Plus className="h-3.5 w-3.5" /> {COPY.actions.add}
+            </Button>
+          </div>
+        </form>
+      </Card>
 
       <div className="space-y-2">
-        {items.map((item) => (
-          <div key={item.id} className="glass rounded-2xl p-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{item.emoji}</span>
-              <div>
-                <div className="text-sm font-semibold">{item.title}</div>
-                <div className="text-xs text-white/55">{item.targetAt}</div>
+        {items.length === 0 ? (
+          <EmptyState
+            icon="⏳"
+            title={COPY.countdowns.emptyTitle}
+            description={COPY.countdowns.emptyDesc}
+          />
+        ) : (
+          items.map((item) => (
+            <Card key={item.id} variant="glass" className="p-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{item.emoji}</span>
+                <div>
+                  <div className="text-sm font-semibold">{item.title}</div>
+                  <div className="text-xs text-white/55">{item.targetAt}</div>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-full bg-rose-glow/20 text-rose-soft text-xs font-semibold">
-                {daysLeft(item.targetAt)}
-              </span>
-              <button
-                type="button"
-                onClick={() => deleteItem(item.id)}
-                aria-label="Delete countdown"
-                className="p-1.5 rounded-lg text-white/45 hover:text-rose-300"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        ))}
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-rose-glow/20 text-rose-soft text-xs font-semibold">
+                  {daysLeft(item.targetAt)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => deleteItem(item.id)}
+                  aria-label="Delete countdown"
+                  className="min-h-[36px] min-w-[36px] p-2 rounded-xl text-white/45 hover:text-rose-300 transition-colors flex items-center justify-center"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

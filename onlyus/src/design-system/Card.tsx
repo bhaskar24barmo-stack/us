@@ -17,9 +17,9 @@ export function Card({
   const baseClasses = 'rounded-[26px] p-5 transition-all duration-200 overflow-hidden';
 
   const variantClasses = {
-    glass: 'glass border border-white/15 shadow-sm',
-    solid: 'glass-strong border border-white/20 shadow-lg',
-    glow: 'glass border border-rose-500/30 shadow-glow-pink',
+    glass: 'glass border border-[var(--glass-border)] shadow-sm',
+    solid: 'glass-strong border border-[var(--glass-border)] shadow-lg',
+    glow: 'glass border border-rose-500/35 shadow-glow-pink',
   }[variant];
 
   return (

@@ -2,6 +2,9 @@ import { motion } from 'framer-motion';
 import { Camera, ImagePlus, Play, Search, Sparkles, Star, Trash2 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Card } from '@/design-system/Card';
+import { EmptyState } from '@/design-system/EmptyState';
+import { COPY } from '@/copy';
 import { compressImage } from '@/features/media/compressor';
 import { useAppStore } from '@/stores/useAppStore';
 
@@ -65,6 +68,11 @@ export default function GalleryPage() {
     });
   }, [savedItems, chatMediaItems, filter, query]);
 
+  // Photo of the day (first favorited or first recent image)
+  const photoOfTheDay = useMemo(() => {
+    return allItems.find((item) => item.type === 'image' && item.favorite) || allItems.find((item) => item.type === 'image') || null;
+  }, [allItems]);
+
   const groupedByDate = useMemo(() => {
     const groups = new Map<string, typeof allItems>();
     for (const item of allItems) {
@@ -103,38 +111,66 @@ export default function GalleryPage() {
     <div className="h-full overflow-y-auto px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(6rem,calc(env(safe-area-inset-bottom)+5.5rem))] space-y-4 no-scrollbar">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold bg-love-gradient bg-clip-text text-transparent">Gallery</h1>
-          <p className="text-xs text-white/60">Private photos &amp; snaps saved in your app</p>
+          <h1 className="text-2xl font-bold bg-love-gradient bg-clip-text text-transparent">
+            {COPY.memories.title}
+          </h1>
+          <p className="text-xs text-white/60">{COPY.memories.subtitle}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => navigate('/camera')}
             aria-label="Open Camera"
-            className="h-9 w-9 rounded-2xl glass flex items-center justify-center text-rose-glow"
+            className="min-h-[44px] min-w-[44px] h-11 w-11 rounded-2xl glass flex items-center justify-center text-rose-glow hover:border-rose-glow/50 transition-colors"
           >
-            <Camera className="h-4 w-4" />
+            <Camera className="h-5 w-5" />
           </button>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="px-3.5 py-2 rounded-2xl bg-love-gradient text-xs font-semibold flex items-center gap-1.5 shadow-glow-pink"
+            className="min-h-[44px] px-4 py-2 rounded-2xl bg-love-gradient text-xs font-semibold flex items-center gap-1.5 shadow-glow-pink text-white"
           >
-            <ImagePlus className="h-4 w-4" /> Add
+            <ImagePlus className="h-4 w-4" /> {COPY.actions.add}
           </button>
         </div>
       </div>
 
+      {/* Photo of the Day Hero Banner */}
+      {photoOfTheDay && !query && filter === 'all' && (
+        <Card
+          variant="glow"
+          className="relative overflow-hidden cursor-pointer p-0 group"
+          onClick={() => {
+            if (photoOfTheDay.messageId) openMediaViewer(photoOfTheDay.messageId);
+          }}
+        >
+          <div className="h-44 w-full relative">
+            <img src={photoOfTheDay.url} alt={photoOfTheDay.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-between p-3.5">
+              <span className="self-start px-3 py-1 rounded-full bg-rose-500/80 backdrop-blur-md text-white text-[10px] font-bold flex items-center gap-1.5 shadow-glow-pink">
+                <Sparkles className="h-3 w-3" /> {COPY.memories.photoOfTheDay}
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-white truncate">{photoOfTheDay.title}</h3>
+                <p className="text-[11px] text-white/70">
+                  {new Date(photoOfTheDay.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Search & Filter */}
       <div className="space-y-2.5">
-        <div className="flex items-center gap-2 rounded-2xl glass px-3.5 py-2 border border-white/10">
+        <div className="flex items-center gap-2 rounded-2xl glass px-3.5 py-2.5 border border-white/10">
           <Search className="h-4 w-4 text-white/50 shrink-0" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search your gallery…"
-            className="flex-1 bg-transparent text-xs outline-none placeholder:text-white/40"
+            className="flex-1 bg-transparent text-xs outline-none placeholder:text-white/40 text-white"
           />
         </div>
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
@@ -148,8 +184,8 @@ export default function GalleryPage() {
               key={t.id}
               type="button"
               onClick={() => setFilter(t.id)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                filter === t.id ? 'bg-love-gradient text-white shadow-glow-pink' : 'glass text-white/65'
+              className={`shrink-0 min-h-[36px] px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                filter === t.id ? 'bg-love-gradient text-white shadow-glow-pink' : 'glass text-white/65 hover:text-white'
               }`}
             >
               {t.label}
@@ -159,15 +195,13 @@ export default function GalleryPage() {
       </div>
 
       {allItems.length === 0 ? (
-        <div className="glass rounded-3xl p-10 text-center space-y-2.5 border border-white/10">
-          <div className="mx-auto h-12 w-12 rounded-2xl bg-love-gradient-soft flex items-center justify-center">
-            <Sparkles className="h-6 w-6 text-rose-glow" />
-          </div>
-          <p className="text-sm font-semibold">Your private gallery is empty</p>
-          <p className="text-xs text-white/55 max-w-xs mx-auto">
-            Photos and snaps you send in Chat or capture with Camera appear here automatically.
-          </p>
-        </div>
+        <EmptyState
+          icon="📸"
+          title={COPY.memories.emptyTitle}
+          description={COPY.memories.emptyDesc}
+          actionLabel={COPY.memories.uploadPrompt}
+          onAction={() => fileRef.current?.click()}
+        />
       ) : (
         <div className="space-y-4">
           {groupedByDate.map(([date, items]) => (
@@ -205,10 +239,10 @@ export default function GalleryPage() {
                             toggleFavoriteMemory(item.id);
                           }}
                           aria-label="Favorite"
-                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/55 flex items-center justify-center"
+                          className="min-h-[32px] min-w-[32px] absolute top-2 right-2 h-8 w-8 rounded-full bg-black/55 flex items-center justify-center backdrop-blur-md"
                         >
                           <Star
-                            className={`h-3.5 w-3.5 ${item.favorite ? 'fill-amber-400 text-amber-400' : 'text-white'}`}
+                            className={`h-4 w-4 ${item.favorite ? 'fill-amber-400 text-amber-400' : 'text-white'}`}
                           />
                         </button>
                         <button
@@ -223,14 +257,14 @@ export default function GalleryPage() {
                             }
                           }}
                           aria-label="Delete"
-                          className="absolute top-2 left-2 px-2 h-7 rounded-full bg-black/55 text-[10px] text-white/85 flex items-center gap-1"
+                          className="min-h-[32px] absolute top-2 left-2 px-2.5 h-8 rounded-full bg-black/55 text-[10px] text-white/85 flex items-center gap-1 backdrop-blur-md"
                         >
-                          {confirmDeleteId === item.id ? 'Confirm?' : <Trash2 className="h-3 w-3" />}
+                          {confirmDeleteId === item.id ? 'Confirm?' : <Trash2 className="h-3.5 w-3.5" />}
                         </button>
                       </>
                     )}
 
-                    <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                    <div className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                       <div className="text-[11px] font-medium text-white truncate">{item.title}</div>
                     </div>
                   </motion.div>

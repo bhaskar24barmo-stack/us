@@ -39,16 +39,16 @@ export function Sheet({ open, onClose, title, children, showClose = true }: Shee
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-            className="relative z-10 w-full max-w-[430px] rounded-t-[32px] glass-strong border-t border-white/20 p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[88vh] flex flex-col overflow-hidden shadow-2xl"
+            className="relative z-10 w-full max-w-[430px] rounded-t-[32px] glass-strong border-t border-[var(--glass-border)] p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[88vh] flex flex-col overflow-hidden shadow-2xl"
           >
             {/* Grab Handle */}
-            <div className="w-10 h-1 rounded-full bg-white/25 mx-auto mb-3 shrink-0" />
+            <div className="w-10 h-1 rounded-full bg-[var(--text-muted)] opacity-35 mx-auto mb-3 shrink-0" />
 
             {/* Header */}
             {(title || showClose) && (
               <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
                 {title ? (
-                  <h3 className="text-base font-bold text-white truncate">{title}</h3>
+                  <h3 className="text-base font-bold text-[var(--text-primary)] truncate">{title}</h3>
                 ) : (
                   <div />
                 )}
@@ -56,7 +56,7 @@ export function Sheet({ open, onClose, title, children, showClose = true }: Shee
                   <button
                     type="button"
                     onClick={onClose}
-                    className="h-8 w-8 rounded-full glass flex items-center justify-center text-white/70 hover:text-white"
+                    className="h-8 w-8 rounded-full glass flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                   >
                     <X className="h-4 w-4" />
                   </button>

@@ -55,3 +55,34 @@ export const TOKENS = {
 } as const;
 
 export type ThemeMode = (typeof TOKENS.themes)[number];
+export type ResolvedTheme = 'dark' | 'cream';
+
+export function resolveThemeMode(mode?: string): ResolvedTheme {
+  if (mode === 'cream' || mode === 'light') {
+    return 'cream';
+  }
+  if (mode === 'auto') {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      if (window.matchMedia('(prefers-color-scheme: light)')?.matches) {
+        return 'cream';
+      }
+      if (window.matchMedia('(prefers-color-scheme: dark)')?.matches) {
+        return 'dark';
+      }
+    }
+    return 'dark';
+  }
+  return 'dark';
+}
+
+export function applyThemeToDocument(mode?: string): ResolvedTheme {
+  const resolved = resolveThemeMode(mode);
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', resolved);
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', resolved === 'cream' ? '#faf6f0' : '#0b0614');
+    }
+  }
+  return resolved;
+}

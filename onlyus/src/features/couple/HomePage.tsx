@@ -20,6 +20,8 @@ import { useNavigate } from 'react-router-dom';
 import AvatarBubble from '@/components/AvatarBubble';
 import HeartbeatTouchModal from '@/components/HeartbeatTouchModal';
 import TiltCard from '@/components/TiltCard';
+import { Button } from '@/design-system/Button';
+import { COPY } from '@/copy';
 import { CONVERSATION_ID } from '@/data/demoData';
 import { t } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
@@ -221,31 +223,31 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate('/calls')}
-            className="h-8 w-8 rounded-full glass flex items-center justify-center text-white/80 hover:text-white transition-colors"
+            className="min-h-[44px] min-w-[44px] h-11 w-11 rounded-2xl glass flex items-center justify-center text-white/80 hover:text-white transition-colors"
             title="Romantic Calls"
             aria-label="Calls"
           >
-            <Phone className="h-4 w-4 text-emerald-400" />
+            <Phone className="h-5 w-5 text-emerald-400" />
           </button>
           <button
             type="button"
             onClick={() => navigate('/camera')}
-            className="h-8 w-8 rounded-full glass flex items-center justify-center text-white/80 hover:text-white transition-colors"
+            className="min-h-[44px] min-w-[44px] h-11 w-11 rounded-2xl glass flex items-center justify-center text-white/80 hover:text-white transition-colors"
             title="Couple Snaps"
             aria-label="Camera"
           >
-            <Camera className="h-4 w-4 text-rose-glow" />
+            <Camera className="h-5 w-5 text-rose-glow" />
           </button>
           <button
             type="button"
             onClick={celebrateStreak}
-            className="px-2.5 py-1.5 rounded-full glass border border-amber-400/30 flex items-center gap-1 text-xs font-semibold text-amber-200"
+            className="min-h-[44px] px-3.5 py-2 rounded-2xl glass border border-amber-400/30 flex items-center gap-1.5 text-xs font-semibold text-amber-200"
           >
-            <Flame className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+            <Flame className="h-4 w-4 text-amber-400 fill-amber-400" />
             <span>{world.streakDays}d</span>
           </button>
         </div>
@@ -422,9 +424,9 @@ export default function HomePage() {
                   setMyVibe(val);
                   triggerHeartbeatHaptic();
                 }}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                className={`shrink-0 min-h-[36px] px-3.5 py-1.5 rounded-full text-xs border transition-colors ${
                   active
-                    ? 'bg-love-gradient text-white border-transparent shadow-glow-pink'
+                    ? 'bg-love-gradient text-white border-transparent shadow-glow-pink font-semibold'
                     : 'bg-white/5 border-white/10 text-white/75 hover:text-white'
                 }`}
               >
@@ -466,15 +468,17 @@ export default function HomePage() {
             <input
               value={answerDraft}
               onChange={(e) => setAnswerDraft(e.target.value)}
-              placeholder="Write your honest thought…"
-              className="flex-1 rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2 text-xs outline-none focus:border-rose-glow"
+              placeholder={COPY.home.dailyAnswerPlaceholder}
+              className="flex-1 rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2.5 text-xs outline-none focus:border-rose-glow text-white"
             />
-            <button
+            <Button
               type="submit"
-              className="px-4 py-2 rounded-2xl bg-love-gradient text-xs font-semibold text-white shrink-0"
+              variant="primary"
+              size="sm"
+              className="px-4 py-2 text-xs font-semibold shrink-0 shadow-glow-pink"
             >
-              Reveal
-            </button>
+              {COPY.actions.reveal}
+            </Button>
           </form>
         )}
       </div>

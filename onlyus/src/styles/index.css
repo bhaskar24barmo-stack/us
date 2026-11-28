@@ -5,20 +5,24 @@
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bg-outer: #040208;
   --bg-primary: #0b0614;
   --bg-secondary: #140b24;
   --text-primary: #ffffff;
   --text-muted: rgba(255, 255, 255, 0.65);
+  --text-danger: #fda4af;
   --glass-bg: rgba(255, 255, 255, 0.055);
   --glass-border: rgba(255, 255, 255, 0.12);
 }
 
 [data-theme="cream"],
 [data-theme="light"] {
+  --bg-outer: #f2ebe1;
   --bg-primary: #faf6f0;
   --bg-secondary: #f4ede4;
   --text-primary: #241a24;
   --text-muted: rgba(36, 26, 36, 0.68);
+  --text-danger: #be123c;
   --glass-bg: rgba(255, 255, 255, 0.88);
   --glass-border: rgba(180, 150, 130, 0.22);
 }
@@ -88,6 +92,13 @@ input, textarea, select {
 }
 
 /* Light & Cream mode text overrides */
+[data-theme="cream"] .text-white\/95,
+[data-theme="cream"] .text-white\/90,
+[data-theme="light"] .text-white\/95,
+[data-theme="light"] .text-white\/90 {
+  color: #241a24 !important;
+}
+
 [data-theme="cream"] .text-white\/50,
 [data-theme="cream"] .text-white\/55,
 [data-theme="cream"] .text-white\/60,
@@ -104,12 +115,52 @@ input, textarea, select {
 [data-theme="light"] .text-white\/75,
 [data-theme="light"] .text-white\/80,
 [data-theme="light"] .text-white\/85 {
-  color: rgba(36, 26, 36, 0.68) !important;
+  color: rgba(36, 26, 36, 0.72) !important;
+}
+
+[data-theme="cream"] .text-white\/45,
+[data-theme="cream"] .text-white\/40,
+[data-theme="cream"] .text-white\/30,
+[data-theme="light"] .text-white\/45,
+[data-theme="light"] .text-white\/40,
+[data-theme="light"] .text-white\/30 {
+  color: rgba(36, 26, 36, 0.56) !important;
+}
+
+[data-theme="cream"] .placeholder-white\/40::placeholder,
+[data-theme="cream"] .placeholder-white\/30::placeholder,
+[data-theme="light"] .placeholder-white\/40::placeholder,
+[data-theme="light"] .placeholder-white\/30::placeholder {
+  color: rgba(36, 26, 36, 0.45) !important;
 }
 
 [data-theme="cream"] .text-white,
 [data-theme="light"] .text-white {
   color: #241a24 !important;
+}
+
+/* Protect white text inside love-gradient and dark media overlays */
+[data-theme="cream"] .bg-love-gradient,
+[data-theme="cream"] .bg-love-gradient .text-white,
+[data-theme="cream"] .bg-love-gradient .text-white\/90,
+[data-theme="cream"] .bg-love-gradient .text-white\/85,
+[data-theme="cream"] .bg-love-gradient .text-white\/80,
+[data-theme="cream"] .bg-love-gradient .text-white\/70,
+[data-theme="cream"] [class*="bg-black/"].text-white,
+[data-theme="cream"] [class*="bg-black/"] .text-white,
+[data-theme="cream"] [class*="bg-black/"] .text-white\/90,
+[data-theme="cream"] [class*="bg-black/"] .text-white\/80,
+[data-theme="light"] .bg-love-gradient,
+[data-theme="light"] .bg-love-gradient .text-white,
+[data-theme="light"] .bg-love-gradient .text-white\/90,
+[data-theme="light"] .bg-love-gradient .text-white\/85,
+[data-theme="light"] .bg-love-gradient .text-white\/80,
+[data-theme="light"] .bg-love-gradient .text-white\/70,
+[data-theme="light"] [class*="bg-black/"].text-white,
+[data-theme="light"] [class*="bg-black/"] .text-white,
+[data-theme="light"] [class*="bg-black/"] .text-white\/90,
+[data-theme="light"] [class*="bg-black/"] .text-white\/80 {
+  color: #ffffff !important;
 }
 
 [data-theme="cream"] .bg-midnight-radial,
@@ -129,25 +180,154 @@ input, textarea, select {
   color: #241a24 !important;
 }
 
-[data-theme="cream"] .bg-love-gradient,
-[data-theme="light"] .bg-love-gradient {
-  color: #ffffff !important;
-}
-
+/* Cream borders, dividers, and rings */
+[data-theme="cream"] .border-white\/5,
 [data-theme="cream"] .border-white\/10,
 [data-theme="cream"] .border-white\/15,
+[data-theme="cream"] .border-white\/20,
+[data-theme="cream"] .border-white\/25,
+[data-theme="light"] .border-white\/5,
 [data-theme="light"] .border-white\/10,
-[data-theme="light"] .border-white\/15 {
+[data-theme="light"] .border-white\/15,
+[data-theme="light"] .border-white\/20,
+[data-theme="light"] .border-white\/25 {
   border-color: rgba(180, 150, 130, 0.25) !important;
 }
 
+[data-theme="cream"] .border-white\/30,
+[data-theme="cream"] .border-white\/40,
+[data-theme="cream"] .border-white\/50,
+[data-theme="light"] .border-white\/30,
+[data-theme="light"] .border-white\/40,
+[data-theme="light"] .border-white\/50 {
+  border-color: rgba(180, 150, 130, 0.36) !important;
+}
+
+[data-theme="cream"] .divide-white\/10 > :not([hidden]) ~ :not([hidden]),
+[data-theme="light"] .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(180, 150, 130, 0.22) !important;
+}
+
+[data-theme="cream"] .ring-white\/15,
+[data-theme="cream"] .ring-white\/30,
+[data-theme="light"] .ring-white\/15,
+[data-theme="light"] .ring-white\/30 {
+  --tw-ring-color: rgba(180, 150, 130, 0.32) !important;
+}
+
+/* Cream surface and dark-backdrop overrides */
 [data-theme="cream"] .bg-white\/5,
 [data-theme="light"] .bg-white\/5 {
   background-color: rgba(36, 26, 36, 0.05) !important;
 }
 
+[data-theme="cream"] .bg-white\/10,
+[data-theme="light"] .bg-white\/10 {
+  background-color: rgba(36, 26, 36, 0.08) !important;
+}
+
+[data-theme="cream"] .bg-white\/15,
+[data-theme="light"] .bg-white\/15 {
+  background-color: rgba(36, 26, 36, 0.11) !important;
+}
+
+[data-theme="cream"] .bg-white\/20,
+[data-theme="light"] .bg-white\/20 {
+  background-color: rgba(36, 26, 36, 0.14) !important;
+}
+
+[data-theme="cream"] .bg-white\/25,
+[data-theme="cream"] .bg-white\/30,
+[data-theme="cream"] .bg-white\/50,
+[data-theme="light"] .bg-white\/25,
+[data-theme="light"] .bg-white\/30,
+[data-theme="light"] .bg-white\/50 {
+  background-color: rgba(36, 26, 36, 0.18) !important;
+}
+
+[data-theme="cream"] .bg-ink-950,
+[data-theme="light"] .bg-ink-950 {
+  background-color: #faf6f0 !important;
+}
+
+[data-theme="cream"] .bg-ink-900,
+[data-theme="light"] .bg-ink-900 {
+  background-color: #f4ede4 !important;
+}
+
+[data-theme="cream"] .bg-ink-800,
+[data-theme="light"] .bg-ink-800 {
+  background-color: #ede3d7 !important;
+}
+
+[data-theme="cream"] .bg-\[\#040208\],
+[data-theme="light"] .bg-\[\#040208\] {
+  background-color: var(--bg-outer) !important;
+}
+
+[data-theme="cream"] .bg-\[\#161024\]\/95,
+[data-theme="light"] .bg-\[\#161024\]\/95 {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+[data-theme="cream"] .from-\[\#0d0718\],
+[data-theme="light"] .from-\[\#0d0718\] {
+  background-image: linear-gradient(to bottom, #faf6f0, #f6efe6, #f1e7db) !important;
+}
+
+/* Cream contrast-safe pastel accent overrides */
+[data-theme="cream"] .text-rose-soft,
+[data-theme="light"] .text-rose-soft {
+  color: #c81e5a !important;
+}
+
+[data-theme="cream"] .text-rose-300,
+[data-theme="cream"] .text-rose-400,
+[data-theme="light"] .text-rose-300,
+[data-theme="light"] .text-rose-400 {
+  color: #be123c !important;
+}
+
+[data-theme="cream"] .text-amber-200,
+[data-theme="cream"] .text-amber-300,
+[data-theme="cream"] .text-amber-400,
+[data-theme="light"] .text-amber-200,
+[data-theme="light"] .text-amber-300,
+[data-theme="light"] .text-amber-400 {
+  color: #b45309 !important;
+}
+
+[data-theme="cream"] .text-violet-200,
+[data-theme="cream"] .text-violet-300,
+[data-theme="light"] .text-violet-200,
+[data-theme="light"] .text-violet-300 {
+  color: #6d28d9 !important;
+}
+
+[data-theme="cream"] .text-emerald-300,
+[data-theme="cream"] .text-emerald-400,
+[data-theme="light"] .text-emerald-300,
+[data-theme="light"] .text-emerald-400 {
+  color: #047857 !important;
+}
+
+[data-theme="cream"] .text-sky-200,
+[data-theme="cream"] .text-sky-300,
+[data-theme="cream"] .text-sky-400,
+[data-theme="light"] .text-sky-200,
+[data-theme="light"] .text-sky-300,
+[data-theme="light"] .text-sky-400 {
+  color: #0369a1 !important;
+}
+
+[data-theme="cream"] .text-purple-400,
+[data-theme="light"] .text-purple-400 {
+  color: #7e22ce !important;
+}
+
 .font-serif-love {
-  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+  font-feature-settings: 'liga' 1, 'kern' 1;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -162,6 +342,12 @@ input, textarea, select {
   background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,77,141,0.12) 50%, rgba(255,255,255,0.03) 75%);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
+}
+
+[data-theme="cream"] .shimmer-bg,
+[data-theme="light"] .shimmer-bg {
+  background: linear-gradient(90deg, rgba(36,26,36,0.05) 25%, rgba(255,77,141,0.14) 50%, rgba(36,26,36,0.05) 75%);
+  background-size: 200% 100%;
 }
 
 @keyframes shimmer {

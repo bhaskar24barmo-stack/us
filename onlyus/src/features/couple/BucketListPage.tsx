@@ -1,6 +1,10 @@
 import { ArrowLeft, Check, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Card } from '@/design-system/Card';
+import { Button } from '@/design-system/Button';
+import { EmptyState } from '@/design-system/EmptyState';
+import { COPY } from '@/copy';
 import { CONVERSATION_ID } from '@/data/demoData';
 import { supabase } from '@/lib/supabase';
 import { playSoftChime, triggerHeartbeatHaptic } from '@/services/notifications';
@@ -167,13 +171,15 @@ export default function BucketListPage() {
           type="button"
           onClick={() => navigate(-1)}
           aria-label="Back"
-          className="h-9 w-9 rounded-xl glass flex items-center justify-center"
+          className="min-h-[44px] min-w-[44px] h-11 w-11 rounded-2xl glass flex items-center justify-center text-white/70 hover:text-white transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Bucket List</h1>
-          <p className="text-xs text-white/55">Adventures to do together</p>
+          <h1 className="text-xl font-bold bg-love-gradient bg-clip-text text-transparent">
+            {COPY.bucketList.title}
+          </h1>
+          <p className="text-xs text-white/55">{COPY.bucketList.subtitle}</p>
         </div>
       </div>
 
@@ -182,40 +188,44 @@ export default function BucketListPage() {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Add a dream or date idea…"
-          className="flex-1 rounded-2xl glass px-3.5 py-2.5 text-xs outline-none border border-white/15 focus:border-rose-glow"
+          className="flex-1 rounded-2xl glass px-4 py-3 text-xs outline-none border border-white/15 focus:border-rose-glow text-white"
         />
-        <button
+        <Button
           type="submit"
-          className="px-4 py-2.5 rounded-2xl bg-love-gradient text-xs font-semibold flex items-center gap-1 shrink-0"
+          variant="primary"
+          size="md"
+          className="flex items-center gap-1.5 shadow-glow-pink shrink-0 text-xs font-semibold"
         >
-          <Plus className="h-4 w-4" /> Add
-        </button>
+          <Plus className="h-4 w-4" /> {COPY.actions.add}
+        </Button>
       </form>
 
       {items.length === 0 ? (
-        <div className="glass rounded-3xl p-8 text-center text-xs text-white/55">
-          No bucket list items yet. Add your first shared dream above.
-        </div>
+        <EmptyState
+          icon="✨"
+          title={COPY.bucketList.emptyTitle}
+          description={COPY.bucketList.emptyDesc}
+        />
       ) : (
         <div className="space-y-2">
           {items.map((item) => (
-            <div key={item.id} className="glass rounded-2xl p-3.5 flex items-center justify-between gap-3">
+            <Card key={item.id} variant="glass" className="p-3.5 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => toggleItem(item.id)}
-                className="flex items-center gap-3 flex-1 text-left min-w-0"
+                className="flex items-center gap-3 flex-1 text-left min-w-0 min-h-[40px]"
               >
                 <span
-                  className={`h-6 w-6 rounded-lg border flex items-center justify-center shrink-0 ${
+                  className={`h-7 w-7 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
                     item.doneAt
                       ? 'bg-emerald-500 border-emerald-400 text-white'
                       : 'border-white/25 bg-white/5'
                   }`}
                 >
-                  {item.doneAt && <Check className="h-3.5 w-3.5" />}
+                  {item.doneAt && <Check className="h-4 w-4" />}
                 </span>
                 <div className="min-w-0">
-                  <div className={`text-sm truncate ${item.doneAt ? 'line-through text-white/45' : ''}`}>
+                  <div className={`text-sm truncate font-medium ${item.doneAt ? 'line-through text-white/45' : 'text-white'}`}>
                     {item.title}
                   </div>
                   {item.doneAt && (
@@ -229,11 +239,11 @@ export default function BucketListPage() {
                 type="button"
                 onClick={() => deleteItem(item.id)}
                 aria-label="Delete"
-                className="p-1.5 text-white/40 hover:text-rose-300"
+                className="min-h-[36px] min-w-[36px] p-2 text-white/40 hover:text-rose-300 transition-colors flex items-center justify-center"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
-            </div>
+            </Card>
           ))}
         </div>
       )}

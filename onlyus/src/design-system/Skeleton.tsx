@@ -13,7 +13,7 @@ export function Skeleton({ className = 'h-4 w-full', rounded = 'default' }: Skel
 
   return (
     <div
-      className={`shimmer-bg bg-white/5 border border-white/5 ${roundedClasses} ${className}`}
+      className={`shimmer-bg bg-white/5 border border-[var(--glass-border)] ${roundedClasses} ${className}`}
     />
   );
 }

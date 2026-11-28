@@ -24,12 +24,12 @@ export function EmptyState({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`flex flex-col items-center justify-center p-8 text-center glass rounded-3xl border border-white/10 space-y-3.5 my-4 ${className}`}
+      className={`flex flex-col items-center justify-center p-8 text-center glass rounded-3xl border border-[var(--glass-border)] space-y-3.5 my-4 ${className}`}
     >
       <div className="text-4xl select-none filter drop-shadow-md">{icon}</div>
       <div className="space-y-1 max-w-xs">
-        <h4 className="text-base font-bold text-white">{title}</h4>
-        <p className="text-xs text-white/65 leading-relaxed">{description}</p>
+        <h4 className="text-base font-bold text-[var(--text-primary)]">{title}</h4>
+        <p className="text-xs text-[var(--text-muted)] leading-relaxed">{description}</p>
       </div>
       {actionLabel && onAction && (
         <Button variant="primary" size="sm" onClick={onAction} className="mt-1">

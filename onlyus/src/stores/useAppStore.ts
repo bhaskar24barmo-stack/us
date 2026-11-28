@@ -14,6 +14,7 @@ import {
   triggerDeviceNotification,
   triggerHeartbeatHaptic,
 } from '@/services/notifications';
+import { applyThemeToDocument } from '@/design-system/tokens';
 import { fetchConversationMessages } from '@/services/chatSync';
 import type {
   AppNotification,
@@ -256,7 +257,7 @@ const PARTNER_REPLIES = [
 
 export const useAppStore = create<AppStore>((set, get) => {
   const initial = loadInitial();
-  document.documentElement.setAttribute('data-theme', initial.settings.themeMode);
+  applyThemeToDocument(initial.settings.themeMode);
 
   const sync = (next: Partial<PersistedSlice>) => {
     const s = get();
@@ -872,7 +873,7 @@ export const useAppStore = create<AppStore>((set, get) => {
 
     updateSettings(patch) {
       const settings = { ...get().settings, ...patch };
-      document.documentElement.setAttribute('data-theme', settings.themeMode);
+      applyThemeToDocument(settings.themeMode);
       set({ settings });
       sync({ settings });
     },
